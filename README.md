@@ -30,7 +30,7 @@ ros-controllers : ``` sudo apt-get install ros-indigo-gazebo-ros-pkgs ros-indigo
  
 ros-gazebo-pkgs for vaccum gripper plugins : https://github.com/ros-simulation/gazebo_ros_pkgs
 
-Clone this repository into the dynamics_ws Workspace using: 
+Clone this repository using: 
 
 ``` git clone https://github.com/sathya1995/dynamics_ws.git ```
 
