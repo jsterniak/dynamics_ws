@@ -30,40 +30,42 @@ ros-controllers : ``` sudo apt-get install ros-indigo-gazebo-ros-pkgs ros-indigo
  
 ros-gazebo-pkgs for vaccum gripper plugins : https://github.com/ros-simulation/gazebo_ros_pkgs
 
-Setting Up Workspace: 
-```
-    mkdir -p ~/dynamics_ws/src && cd ~/dynamics_ws/src
-    catkin_init_workspace
-    cd ~/dynamics_ws
-    catkin_make
-```
 Clone this repository into the dynamics_ws Workspace using: 
 
 ``` git clone https://github.com/sathya1995/dynamics_ws.git ```
+
 
 Build the Package using:
 
 ```
 catkin_make
-source devel/setup.bash 
 ```
 
-Usage:
-
-Launch gazebo: 
-``` roslaunch irb120-gazebo irb120_gazebo.launch ```
-
-Run the Node for trajectory planning: 
-``` rosrun irb120 irb120_node ```
-
-Run the tf node: 
-``` rosrun irb120_tf_calc irb120_tf_calc_node ```
-
-Run the Node for image processing: 
-``` rosrun irb120_perception irb120_perception_node ```
-
+Source the package to ROS Path: 
+```
+source devel/setup.bash
+```
 
 Important Note:
+
 ```
 Kindly copy the folder named irb120_model in irb120_gazebo/worlds and paste it in the location ~/.gazebo/models
 ```
+
+The following steps are to be done in the order specified below: 
+
+Launch gazebo: 
+
+``` roslaunch irb120-gazebo irb120_gazebo.launch ```
+
+Run the Node for trajectory planning: 
+
+``` rosrun irb120 irb120_node ```
+
+Run the tf node: 
+
+``` rosrun irb120_tf_calc irb120_tf_calc_node ```
+
+Run the Node for image processing: 
+
+``` rosrun irb120_perception irb120_perception_node ```
