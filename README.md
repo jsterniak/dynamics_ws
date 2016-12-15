@@ -83,4 +83,4 @@ Run the Node for image processing:
 rosrun irb120_perception irb120_perception_node 
 ```
 
-The Robot should be moving to desired place for picking and then placing the BGA on the PCB at the desired orientation. 
+The Robot should be moving to desired place for picking the BGA and then placing the BGA on the PCB at the desired orientation. 
