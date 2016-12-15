@@ -14,7 +14,7 @@ Sathya Narayanan
 
 Project Goal : Accurate BGA chip placement on a PCB using ABB IRB 120 Industrial robot
 
-This repository contains the necessary packages for simulating ABB IRB 120 for a pick and place application of BGA on a PCB. The simulation is carried out in Gazebo using ROS. A Vaccum gripper is attached to the end effector for pick and place operation. The uses of different packages are as follows: 
+This repository contains the necessary packages for simulating ABB IRB 120 for a pick and place application of BGA on a PCB. The simulation is carried out in Gazebo using ROS. A Vacuum gripper is attached to the end effector for pick and place operation. The uses of different packages are as follows: 
 
 irb120 : Trajectory Planning
 
