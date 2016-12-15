@@ -37,10 +37,17 @@ Setting Up Workspace:
     cd ~/dynamics_ws
     catkin_make
 ```
+Clone this repository into the dynamics_ws Workspace using: 
+
+``` git clone https://github.com/sathya1995/dynamics_ws.git ```
+
+Build the Package using:
+
+``` catkin_make
+    source devel/setup.bash ```
 
 Usage:
 
-source devel/setup.bash
 Launch gazebo: 
 ``` roslaunch irb120-gazebo irb120_gazebo.launch ```
 
