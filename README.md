@@ -26,7 +26,7 @@ OpenCV : http://opencv.org/
 
 Eigen : http://eigen.tuxfamily.org/index.php?title=Main_Page
 
-ros-controllers : sudo apt-get install ros-indigo-gazebo-ros-pkgs ros-indigo-gazebo-ros-control
+ros-controllers : ``` sudo apt-get install ros-indigo-gazebo-ros-pkgs ros-indigo-gazebo-ros-control ```
  
 ros-gazebo-pkgs for vaccum gripper plugins : https://github.com/ros-simulation/gazebo_ros_pkgs
 
@@ -43,8 +43,10 @@ Clone this repository into the dynamics_ws Workspace using:
 
 Build the Package using:
 
-``` catkin_make
-    source devel/setup.bash ```
+```
+catkin_make
+source devel/setup.bash 
+```
 
 Usage:
 
