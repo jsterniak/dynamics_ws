@@ -64,25 +64,23 @@ Kindly copy the folder named irb120_model in irb120_gazebo/worlds and paste it i
 The following steps are to be done in the order specified below: 
 
 Launch gazebo: 
-
-``` roslaunch irb120-gazebo irb120_gazebo.launch
+```
+roslaunch irb120-gazebo irb120_gazebo.launch
 ```
 
 Run the Node for trajectory planning: 
-
 ``` 
 rosrun irb120 irb120_node 
 ```
 
 Run the tf node: 
-
 ``` 
 rosrun irb120_tf_calc irb120_tf_calc_node 
 ```
 
 Run the Node for image processing: 
-
-``` rosrun irb120_perception irb120_perception_node 
+```
+rosrun irb120_perception irb120_perception_node 
 ```
 
 The Robot should be moving to desired place for picking and then placing the BGA on the PCB at the desired orientation. 
