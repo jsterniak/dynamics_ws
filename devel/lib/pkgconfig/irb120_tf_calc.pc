@@ -1,8 +1,0 @@
-prefix=/home/sathya/dynamics_ws/devel
-
-Name: irb120_tf_calc
-Description: Description of irb120_tf_calc
-Version: 0.0.0
-Cflags: 
-Libs: -L/home/sathya/dynamics_ws/devel/lib 
-Requires: roscpp geometry_msgs tf
