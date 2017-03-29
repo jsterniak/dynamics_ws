@@ -6,6 +6,7 @@ project(irb120_mover)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  moveit_ros_planning_interface
 )
 
 ###################################
@@ -20,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES irb120_mover
-#  CATKIN_DEPENDS roscpp
+  CATKIN_DEPENDS roscpp moveit_ros_planning_interface
 #  DEPENDS system_lib
 )
 

@@ -5,10 +5,13 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "irb120_mover_node");
   ros::NodeHandle n;
-  
-  // todo: name the planning group
-  moveit::planning_interface::MoveGroup group("");
-  
+
+  ros::AsyncSpinner spinner(1);
+  spinner.start();
+
+  moveit::planning_interface::MoveGroup group("manipulator");
+  group.setPlanningTime(1.0);
+
   ROS_INFO("Going to arbitrary position in 2 seconds");
   sleep(2.0);
 
@@ -26,7 +29,7 @@ int main(int argc, char **argv)
   bool success = group.plan(my_plan);
 
   // Uncomment below line when working with a real robot
-  // group.move()
+//  group.move();
 
   ROS_INFO("Visualizing plan 1 (pose goal) %s",success?"":"FAILED");
   // Sleep to give Rviz time to visualize the plan
@@ -47,7 +50,7 @@ int main(int argc, char **argv)
   success = group.plan(my_plan);
 
   // Uncomment below line when working with a real robot
-  // group.move()
+//  group.move();
 
   ROS_INFO("Visualizing plan 2 (pose goal) %s",success?"":"FAILED");
   // Sleep to give Rviz time to visualize the plan
