@@ -5,6 +5,8 @@ project(irb120_mover)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
+  std_msgs
   roscpp
   moveit_ros_planning_interface
 )
@@ -47,11 +49,15 @@ include_directories(
 
 ## Declare a C++ executable
  add_executable(irb120_mover_node src/main.cpp)
-
+ add_executable(irb120_main_loop src/state_machine.cpp)
 ## Specify libraries to link a library or executable target against
  target_link_libraries(irb120_mover_node
    ${catkin_LIBRARIES}
 )
+
+ target_link_libraries(irb120_main_loop
+   ${catkin_LIBRARIES}
+ )
 
 #############
 ## Install ##
