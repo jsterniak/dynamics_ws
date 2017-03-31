@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   moveit_ros_planning_interface
 )
+find_package(cmake_modules REQUIRED)
+find_package(Eigen REQUIRED)
 
 ###################################
 ## catkin specific configuration ##
@@ -50,7 +52,12 @@ include_directories(
 ## Declare a C++ executable
  add_executable(irb120_mover_node src/main.cpp)
  add_executable(irb120_main_loop src/state_machine.cpp)
+ add_executable(irb120_move_robot src/MoveRobot.cpp)
 ## Specify libraries to link a library or executable target against
+add_library(irb120_move_robot_lib src/MoveRobot.cpp)
+
+target_link_libraries(irb120_main_loop irb120_move_robot_lib)
+
  target_link_libraries(irb120_mover_node
    ${catkin_LIBRARIES}
 )
@@ -59,6 +66,9 @@ include_directories(
    ${catkin_LIBRARIES}
  )
 
+ target_link_libraries(irb120_move_robot
+   ${catkin_LIBRARIES}
+ )
 #############
 ## Install ##
 #############

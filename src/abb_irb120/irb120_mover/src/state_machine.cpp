@@ -1,6 +1,12 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <geometry_msgs/Point.h>
+#include <sensor_msgs/JointState.h>
+#include "MoveRobot.h"
+
+#define ERROR_THRESHOLD 0.0
+
+//void EEPositionFeedBackCB (const sensor_msgs::JointState msg);
 
 // For all movement state, if the error between the current position and desired position is within a set threshold, move to next state
 
@@ -144,31 +150,103 @@ enum RobotState {
 
 int current_robot_state = 0;
 
+MatrixXd JointAngles(1,6);          // The robot current joint angles
+VectorXd ee_current_position(3);    // The robot real position of the end-effector calculated from the JointAngles
+
+void EEPositionFeedBackCB (const sensor_msgs::JointState msg)
+{
+
+    JointAngles(0,0)=msg.position[0];
+    JointAngles(0,1)=msg.position[1];
+    JointAngles(0,2)=msg.position[2];
+    JointAngles(0,3)=msg.position[3];
+    JointAngles(0,4)=msg.position[4];
+    JointAngles(0,5)=msg.position[5];
+
+}
+
+
 int main(int argc, char **argv) {
 
     ros::init(argc, argv, "irb120_state_machine");
     ros::NodeHandle n;
-    ros::Publisher robot_state_pub = n.advertise<std_msgs::String>("robot_state", 1000);
+    ros::Publisher robot_state_pub = n.advertise<std_msgs::String>("robot_state", 1000);        // Publisher to broadcast the current state of the robot
     ros::Publisher ee_position_pub = n.advertise<geometry_msgs::Point>("/irb120/ee_pos", 1000); // Publisher to broadcast the position the EE needs to be at
+
+    ros::Subscriber ee_pos_sub  = n.subscribe("/joint_states", 100, EEPositionFeedBackCB);      // Subscriber to get the real robot JointAngles
 
     ros::Rate loop_rate(2); // Publishing at 50 ms = 2Hz
 
-    while (1){
+
+    // Initializing D-H parameters of the robot
+    VectorXd theta(6);
+    VectorXd d(6);
+    VectorXd a(6);
+    VectorXd alpha(6);
+
+    d(0) = 290; d(1)=0; d(2) = 0; d(3) = 302; d(4) = 0; d(5)= 72;
+    a(0) = 0; a(1) = 270; a(2) = 70; a(3) = 0; a(4) = 0; a(5) = 0;
+    alpha(0) = 90 * (M_PI/180.0); alpha(1) = 0* (M_PI/180.0); alpha(2) = 90* (M_PI/180.0);
+    alpha(3) = -90* (M_PI/180.0); alpha(4) = 90* (M_PI/180.0); alpha(5)= 0* (M_PI/180.0);
+
+    JointAngles(0,0) = 0.0;
+    JointAngles(0,1) = 0.0;
+    JointAngles(0,2) = 0.0;
+    JointAngles(0,3) = 0.0;
+    JointAngles(0,4) = 0.0;
+    JointAngles(0,5) = 0.0;
+
+    // MoveBot object to calculate Kinematics
+    MoveRobot move_bot(theta, d, a, alpha);
+
+    // The homogeneous transformation matrix H from base to tip
+    MatrixXd H;
+
+    while (ros::ok()){
+
+        // Define vectors that represent the position of the PCB and error
+        VectorXd desired_position(3);
+        VectorXd ee_error(3);
 
         std_msgs::String state_msg;
-
+        geometry_msgs::Point desired_position_msg;
 
         switch(current_robot_state) {
-            case Initialization:
+            case Initialization: 
+                // This state initilizes the robot position above the PCB, a hardcoded position where the camera can easily detect the PCB
+
+                // Calculate the homogeneous matrix to get the current end-effector position
+
+                H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+                ee_current_position(0) = H(0, 3);
+                ee_current_position(1) = H(1, 3);
+                ee_current_position(2) = H(2, 3);
+
+                // Set the position of the PCB
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
 
                 // use ee_position_pub to publish PCB position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg); 
 
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
 
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = DetectPCB;
+                }
 
+                // Publish the robot current state
                 state_msg.data = "Initialization";
-                //           robot_state_pub.publish(state_msg);
+                robot_state_pub.publish(state_msg);
 
-                // if (tf.can_transform) current_robot_state = DetectPCB;
                 break;
 
             case DetectPCB:
