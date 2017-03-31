@@ -211,22 +211,22 @@ int main(int argc, char **argv) {
         std_msgs::String state_msg;
         geometry_msgs::Point desired_position_msg;
 
+        // Calculate the homogeneous matrix to get the current end-effector position
+        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+        ee_current_position(0) = H(0, 3);
+        ee_current_position(1) = H(1, 3);
+        ee_current_position(2) = H(2, 3);
+
         switch(current_robot_state) {
+            // =======================================================================================================================
+            // This state initilizes the robot position above the PCB, a hardcoded position where the camera can easily detect the PCB
+            // ======================================================================================================================= 
             case Initialization: 
-                // This state initilizes the robot position above the PCB, a hardcoded position where the camera can easily detect the PCB
-
-                // Calculate the homogeneous matrix to get the current end-effector position
-
-                H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
-                ee_current_position(0) = H(0, 3);
-                ee_current_position(1) = H(1, 3);
-                ee_current_position(2) = H(2, 3);
 
                 // Set the position of the PCB
                 desired_position(0) = 0.0;
                 desired_position(1) = 0.0;
                 desired_position(2) = 0.0;
-
 
                 // use ee_position_pub to publish PCB position
                 desired_position_msg.x = desired_position(0);
@@ -249,100 +249,492 @@ int main(int argc, char **argv) {
 
                 break;
 
+
+            // =======================================================================================================================
+            // ============== This state uses the computer vision node to obtain the position and orientation of the PCB =============
+            // ======================================================================================================================= 
             case DetectPCB:
 
-                break;
+                // INSERT CODE FOR COMPUTER VISION
+                // USE tf.can_transform to trigger the next state
 
+                // Publish the robot current state
+                state_msg.data = "DetectPCB";
+                robot_state_pub.publish(state_msg);
+                break;
+            
+            // =======================================================================================================================
+            // === This state moves the robot to a position above the SOIC, within the camera view to determine the SOIC position ====
+            // ======================================================================================================================= 
             case Move2DetectSOIC:
+                
+                // Set the position of the SOIC
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
+                // Use ee_position_pub to move the robot to SOIC position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = DetectSOIC;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2DetectSOIC";
+                robot_state_pub.publish(state_msg);
 
                 break;
 
+
+            // =======================================================================================================================
+            // ============= This state uses the computer vision node to obtain the position and orientation of the SOIC =============
+            // ======================================================================================================================= 
             case DetectSOIC:
 
+                // INSERT CODE FOR COMPUTER VISION
+                // USE tf.can_transform to trigger the next state
+
+                // Publish the robot current state
+                state_msg.data = "DetectSOIC";
+                robot_state_pub.publish(state_msg);
                 break;
 
+            // =======================================================================================================================
+            // ======================= This state moves the robot to the position of the syringe to pick it up =======================
+            // ======================================================================================================================= 
             case Move2PickSyringe:
+                
+                // Set the position of the Syringe
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
+                // Use ee_position_pub to move the robot to SOIC position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = PickSyringe;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2PickSyringe";
+                robot_state_pub.publish(state_msg);
 
                 break;
 
+            // =======================================================================================================================
+            // ======================== This state executes the pick up action to grip the syringe ===================================
+            // ======================================================================================================================= 
             case PickSyringe:
+                
+                // INSERT CODE TO PICK UP SYRINGE
+                // I'M NOT SURE HOW TO DO THIS YET
 
+                // Publish the robot current state
+                state_msg.data = "PickSyringe";
+                robot_state_pub.publish(state_msg);
+    
                 break;
 
             case Move2ReleaseSolderPaste:
+                // Set the position of the PCB to release solder paste
+                // This position should be the one obtained by the CV node
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
 
+                // Use ee_position_pub to move the robot to PCB position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = ApplySolderPaste;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2ReleaseSolderPaste";
+                robot_state_pub.publish(state_msg);
                 break;
 
+            // =======================================================================================================================
+            // ======================================= This state applies the solder paste ===========================================
+            // =======================================================================================================================
             case ApplySolderPaste:
-
+                // NOTE: WE WOULD HAVE A LIST OF NODES HERE TO APPLY THE SOLDER PASTE
+                // Publish the robot current state
+                state_msg.data = "ApplySolderPaste";
+                robot_state_pub.publish(state_msg);
                 break;
-
+            
+            // =======================================================================================================================
+            // ======================= This state moves the robot to the position of the syringe to drop it off ======================
+            // ======================================================================================================================= 
             case Move2DropSyringe:
+                // Set the position of the Syringe
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
+                // Use ee_position_pub to move the robot to syringe position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = DropSyringe;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2DropSyringe";
+                robot_state_pub.publish(state_msg);
 
                 break;
 
+            // =======================================================================================================================
+            // ============================================ This state drops the syringe =========== =================================
+            // =======================================================================================================================
             case DropSyringe:
+                // Publish the robot current state
+                state_msg.data = "DropSyringe";
+                robot_state_pub.publish(state_msg);
 
                 break;
 
+
+            // =======================================================================================================================
+            // ===================== This state moves the robot to the position of the suction cup to pick it up =====================
+            // ======================================================================================================================= 
             case Move2PickSuction:
 
+                // Set the position of the Suction cup to pick it up
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
+                // Use ee_position_pub to move the robot to suction cup position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = PickSuction;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2PickSuction";
+                robot_state_pub.publish(state_msg);
+
+
                 break;
 
+            
+            // =======================================================================================================================
+            // ========================================= This state picks up the suction cup =========================================
+            // =======================================================================================================================
             case PickSuction:
-
+                // Publish the robot current state
+                state_msg.data = "PickSuction";
+                robot_state_pub.publish(state_msg);
                 break;
 
+            // =======================================================================================================================
+            // ======================== This state moves the robot to the position of the SOIC to pick it up =========================
+            // ======================================================================================================================= 
             case Move2PickSOIC:
+                // Set the position of the SOIC to pick it up
+                // This position is the one obtained from the CV node
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
+                // Use ee_position_pub to move the robot to ee position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = PickSOIC;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2PickSOIC";
+                robot_state_pub.publish(state_msg);
 
                 break;
-
+               
+            // =======================================================================================================================
+            // ========================================== This state picks up the SOIC ===============================================
+            // =======================================================================================================================
             case PickSOIC:
-
+                // Publish the robot current state
+                state_msg.data = "PickSOIC";
+                robot_state_pub.publish(state_msg);
                 break;
-
+            
+            // =======================================================================================================================
+            // ====================== This state moves the robot to the position of the PCB to place the SOIC  =======================
+            // ======================================================================================================================= 
             case Move2PlaceSOIC:
+                // Set the position of the PCB to place the SOIC
+                // This is the position obtained from the CV node
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
+                // Use ee_position_pub to move the robot to PCB position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = PlaceSOIC;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2PlaceSOIC";
+                robot_state_pub.publish(state_msg);
 
                 break;
 
+            // =======================================================================================================================
+            // ====================================== This state places the SOIC on top of PCB =======================================
+            // =======================================================================================================================
             case PlaceSOIC:
-
+                // Publish the robot current state
+                state_msg.data = "PlaceSOIC";
+                robot_state_pub.publish(state_msg);
                 break;
-
+            
+            // =======================================================================================================================
+            // ====================== This state moves the robot to the position of the suction to drop it off  ======================
+            // ======================================================================================================================= 
             case Move2DropSuction:
+                // Set the position of the Suction cup to release
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
 
+                // Use ee_position_pub to move the robot to Suction cup position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = DropSuction;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2DropSuction";
+                robot_state_pub.publish(state_msg);
                 break;
 
-
+            // =======================================================================================================================
+            // ========================================== This state drops the suction cup ===========================================
+            // =======================================================================================================================
             case DropSuction:
-
+                // Publish the robot current state
+                state_msg.data = "DropSuction";
+                robot_state_pub.publish(state_msg);
                 break;
-
+            
+            // =======================================================================================================================
+            // ==================== This state moves the robot to the position of the hot air pencil to pick it up ===================
+            // ======================================================================================================================= 
             case Move2PickHotAirPencil:
+                // Set the position of the Hot Air Pencil
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
 
+                // Use ee_position_pub to move the robot to Hot Air Pencil position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = PickHotAirPencil;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2HotAirPencil";
+                robot_state_pub.publish(state_msg);
                 break;
 
+            // =======================================================================================================================
+            // ======================================= This state picks up the hot air pencil ========================================
+            // =======================================================================================================================
             case PickHotAirPencil:
-
+                // Publish the robot current state
+                state_msg.data = "PickHotAirPencil";
+                robot_state_pub.publish(state_msg);
                 break;
 
+            // =======================================================================================================================
+            // ===================== This state moves the robot to the position of the PCB to perform soldering ======================
+            // ======================================================================================================================= 
             case Move2SolderPCB:
 
+                // Set the position of the PCB toapply hot air
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
+                // Use ee_position_pub to move the robot to PCB position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = ApplyHotAir;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2SolderPCB";
+                robot_state_pub.publish(state_msg);
                 break;
 
+            // =======================================================================================================================
+            // ================================= This state applies hot air to melt the solder paste =================================
+            // =======================================================================================================================
             case ApplyHotAir:
-
+                // WE WOULD HAVE A LIST OF POINTS HERE CAUSE WE'RE MOVING THE HOT AIR AROUND
+                // Publish the robot current state
+                state_msg.data = "ApplyHotAir";
+                robot_state_pub.publish(state_msg);
                 break;
 
+            // =======================================================================================================================
+            // =================== This state moves the robot to the position of the hot air pencil to drop it off ===================
+            // ======================================================================================================================= 
             case Move2DropHotAirPencil:
+                // Set the position of the Hot Air Pencil
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
 
+                // Use ee_position_pub to move the robot to Hot Air Pencil position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    current_robot_state = DropHotAirPencil;
+                }
+
+                // Publish the robot current state
+                state_msg.data = "Move2DropHotAirPencil";
+                robot_state_pub.publish(state_msg);
                 break;
 
+            // =======================================================================================================================
+            // ========================================= This state releases the hot air pencil ======================================
+            // =======================================================================================================================
             case DropHotAirPencil:
+                // Publish the robot current state
+                state_msg.data = "DropHotAirPencil";
+                robot_state_pub.publish(state_msg);
 
                 break;
-
+            
+            // =======================================================================================================================
+            // ======================= This state moves the robot to home position and terminates the program ========================
+            // ======================================================================================================================= 
             case ReturnHome:
+                // Set the home position
+                desired_position(0) = 0.0;
+                desired_position(1) = 0.0;
+                desired_position(2) = 0.0;
+
+                // Use ee_position_pub to move the robot to PCB position
+                desired_position_msg.x = desired_position(0);
+                desired_position_msg.y = desired_position(1);
+                desired_position_msg.z = desired_position(2);
+                ee_position_pub.publish(desired_position_msg);
+
+                // Calculate the error between desired and real position
+                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
+                ee_error = desired_position - ee_current_position; // Error = desired - real
+
+                // Move to next state when the threshold is met
+                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                    exit(EXIT_SUCCESS);
+                }
+
+                // Publish the robot current state
+                state_msg.data = "ReturnHome";
+                robot_state_pub.publish(state_msg);
 
                 break;
 
@@ -352,25 +744,7 @@ int main(int argc, char **argv) {
         loop_rate.sleep();    
     }
 
-    // Computer vision to detect all positions
-
-    // Pick up syringe
-
-    // Move to PCB and apply solder paste
-
-    // Switch tool too suction cup
-
-    // Move to and Pick up SOIC
-
-    // Move to PCB and place SOIC
-
-    // Switch tool to hot air pencil
-
-    // Move to PCB
-
-    // Flow solder
-
-    // Put tool away and return home
+    cout << "Succesfully executed the tasks" << endl;
 
     return 0;
 }
