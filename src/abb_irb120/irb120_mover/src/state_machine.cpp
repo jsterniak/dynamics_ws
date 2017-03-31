@@ -148,7 +148,7 @@ enum RobotState {
     ReturnHome = 24
 };
 
-int current_robot_state = 0;
+int current_robot_state = Initialization;
 
 MatrixXd JointAngles(1,6);          // The robot current joint angles
 VectorXd ee_current_position(3);    // The robot real position of the end-effector calculated from the JointAngles
