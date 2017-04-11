@@ -53,6 +53,7 @@ include_directories(
  add_executable(irb120_mover_node src/main.cpp)
  add_executable(irb120_main_loop src/state_machine.cpp)
  add_executable(irb120_move_robot src/MoveRobot.cpp)
+ add_executable(irb120_robot_mover src/robot_mover.cpp)
 ## Specify libraries to link a library or executable target against
 add_library(irb120_move_robot_lib src/MoveRobot.cpp)
 
@@ -63,6 +64,10 @@ target_link_libraries(irb120_main_loop irb120_move_robot_lib)
 )
 
  target_link_libraries(irb120_main_loop
+   ${catkin_LIBRARIES}
+ )
+
+ target_link_libraries(irb120_robot_mover
    ${catkin_LIBRARIES}
  )
 

@@ -6,6 +6,9 @@
 #include <eigen/Eigen/Dense>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Point.h>
+#include <std_msgs/Float64MultiArray.h>
+
+
 
 #define HOME_X 550
 #define HOME_Y 200
@@ -35,6 +38,8 @@ class MoveRobot{
         ros::Publisher joint4_pub;
         ros::Publisher joint5_pub;
         ros::Publisher joint6_pub;
+
+        ros::Publisher all_joints_pub;
 
         // ============ Subscriber listening to new end effector position ============ 
         ros::Subscriber new_pos;
@@ -72,6 +77,8 @@ class MoveRobot{
             joint4_pub = n.advertise<std_msgs::Float64>("/irb120/joint_4_position_controller/command",1000);
             joint5_pub = n.advertise<std_msgs::Float64>("/irb120/joint_5_position_controller/command",1000);
             joint6_pub = n.advertise<std_msgs::Float64>("/irb120/joint_6_position_controller/command",1000);
+            
+            all_joints_pub = n.advertise<std_msgs::Float64MultiArray>("/irb120/joint_values", 1000);
 
             new_pos = n.subscribe("/irb120/ee_pos", 100, &MoveRobot::NewPositionCallBack, this);
         }

@@ -1,4 +1,7 @@
+
+
 #include "MoveRobot.h"
+
 
 #define HOME_X 550
 #define HOME_Y 200
@@ -151,14 +154,26 @@ MatrixXd MoveRobot::getR03(VectorXd theta_)
 void MoveRobot::moveRobot(MatrixXd theta)
 {
     std_msgs::Float64 msg1,msg2,msg3,msg4,msg5,msg6;
-	
+    std_msgs::Float64MultiArray joint_angles;
+    joint_angles.data.resize(6);
+    
     msg1.data = theta(0,0);
     msg2.data = theta(0,1);
     msg3.data = theta(0,2);
     msg4.data = theta(0,3);
     msg5.data = theta(0,4);
     msg6.data = theta(0,5);
+
+    joint_angles.data[0] = theta(0,0);
+    joint_angles.data[1] = theta(0,1);
+    joint_angles.data[2] = theta(0,2);
+    joint_angles.data[3] = theta(0,3);
+    joint_angles.data[4] = theta(0,4);
+    joint_angles.data[5] = theta(0,5);
+
     // ROS_INFO("out");
+    all_joints_pub.publish(joint_angles);
+        
     joint1_pub.publish(msg1);
     joint2_pub.publish(msg2);
     joint3_pub.publish(msg3);

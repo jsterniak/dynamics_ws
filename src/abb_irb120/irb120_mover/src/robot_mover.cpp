@@ -1,22 +1,28 @@
 #include <ros/ros.h>
 #include <moveit/move_group_interface/move_group.h>
+#include <std_msgs/Float64MultiArray.h>
 
+moveit::planning_interface::MoveGroup group("manipulator");
 
-void EEPoseCallback(const geometry_msgs::Pose msg)
+void EEPoseCallBack(const std_msgs::Float64MultiArray msg)
 {
-		
-	geometry_msgs::Pose ee_target_pose
-	ee_target_pose.orientation.w = 1.0;
-	ee_target_pose.orientation.x = 8.2768e-06;
-    ee_target_pose.orientation.y = 2.0115e-05;
-    ee_target_pose.orientation.z = 2.0115e-05;
-    ee_target_pose.position.x = msg.x;
-    ee_target_pose.position.y = msg.y;
-    ee_target_pose.position.z = msg.z;
 
-    group.setPoseTarget(ee_target_pose);
+    
+    std::vector< double > ee_target_pose;		
+	//geometry_msgs::Pose ee_target_pose;
+
+    ee_target_pose.resize(6);  
+
+    ee_target_pose[0] = msg.data[0];
+    ee_target_pose[1] = msg.data[1];
+    ee_target_pose[2] = msg.data[2];
+    ee_target_pose[3] = msg.data[3];
+    ee_target_pose[4] = msg.data[4];
+    ee_target_pose[5] = msg.data[5];
+
+    group.setJointValueTarget(ee_target_pose);
 	
-	moveit::planning_interface::MoveGroup::Plan my_plan;
+    moveit::planning_interface::MoveGroup::Plan my_plan;
     bool success = group.plan(my_plan);
 
     // Uncomment below line when working with a real robot
@@ -31,12 +37,11 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "irb120_robot_mover");
 	ros::NodeHandle n;
 
-	ros::Subscriber sub = n.subscribe("/irb120/ee_pos", 1000, chatterCallback);
+	ros::Subscriber sub = n.subscribe("/irb120/joint_values", 1000, EEPoseCallBack);
 
 	ros::AsyncSpinner spinner(1);
 	spinner.start();
 
-	moveit::planning_interface::MoveGroup group("manipulator");
 	group.setPlanningTime(1.0);
 
 	ROS_INFO("Going to arbitrary position in 2 seconds");
