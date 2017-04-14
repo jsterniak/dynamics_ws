@@ -7,12 +7,12 @@
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Point.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <moveit/move_group_interface/move_group.h>
 
 
-
-#define HOME_X 550
-#define HOME_Y 200
-#define HOME_Z 200
+//#define HOME_X 550
+//#define HOME_Y 200
+//#define HOME_Z 200
 
 using namespace Eigen;
 using namespace std;
@@ -26,10 +26,8 @@ class MoveRobot{
 
         // Robot current EE position
         VectorXd current_pos;
-
-        //std_msgs:: Float64 orient_msg;
-        //geometry_msgs::Point tf;
-        //geometry_msgs::Point position_msg;
+        
+        VectorXd cur_joint_values;
 
         // ============ Joint Publishers ============
         ros::Publisher joint1_pub;
@@ -40,28 +38,19 @@ class MoveRobot{
         ros::Publisher joint6_pub;
 
         ros::Publisher all_joints_pub;
-
+        
+        moveit::planning_interface::MoveGroup *group; //("manipulator");
         // ============ Subscriber listening to new end effector position ============ 
         ros::Subscriber new_pos;
 
-
-        //ros::Subscriber pos1_sub;
-        //ros::Subscriber pos2_sub;
-        //ros::Subscriber orientation_sub;
-        //ros::Subscriber tf_sub;
-        //ros::ServiceClient client1;
-        //ros::ServiceClient client2;
-        //double x_new;
-        //double y_new;
-
     public:
-        MoveRobot(VectorXd theta_, VectorXd d_, VectorXd a_, VectorXd alpha_, ros::NodeHandle n, VectorXd cur_pos)
+        MoveRobot(VectorXd theta_, VectorXd d_, VectorXd a_, VectorXd alpha_, ros::NodeHandle n, VectorXd cur_pos, VectorXd cur_jvals)
         {
             theta = theta_;
             d = d_;
             a = a_;
             alpha = alpha_;
-
+            
             theta(0) = theta(0)         * (M_PI/180);
             theta(1) = (theta(1) + 90)  * (M_PI/180);
             theta(2) = theta(2)         * (M_PI/180);
@@ -70,6 +59,8 @@ class MoveRobot{
             theta(5) = theta(5)         * (M_PI/180);
 
             current_pos = cur_pos;
+            cur_joint_values = cur_jvals;
+            group = new moveit::planning_interface::MoveGroup("manipulator"); //moveit_group;
 
             joint1_pub = n.advertise<std_msgs::Float64>("/irb120/joint_1_position_controller/command",1000);
             joint2_pub = n.advertise<std_msgs::Float64>("/irb120/joint_2_position_controller/command",1000);

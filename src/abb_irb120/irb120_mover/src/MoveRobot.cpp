@@ -1,11 +1,9 @@
-
-
 #include "MoveRobot.h"
 
 
-#define HOME_X 550
-#define HOME_Y 200
-#define HOME_Z 200
+#define HOME_X -237
+#define HOME_Y 384
+#define HOME_Z 151
 
 //Function for generating Transformation Matrix
 MatrixXd MoveRobot::MatrixTransformation(double theta, double d_, double a_, double alpha_)
@@ -156,30 +154,34 @@ void MoveRobot::moveRobot(MatrixXd theta)
     std_msgs::Float64 msg1,msg2,msg3,msg4,msg5,msg6;
     std_msgs::Float64MultiArray joint_angles;
     joint_angles.data.resize(6);
+
+    // cout << "Moving Robot" << endl;
     
-    msg1.data = theta(0,0);
-    msg2.data = theta(0,1);
-    msg3.data = theta(0,2);
-    msg4.data = theta(0,3);
-    msg5.data = theta(0,4);
-    msg6.data = theta(0,5);
+       if (!(isnan(theta(0,0)))) {cur_joint_values(0) = theta(0,0);}
+       if (!(isnan(theta(0,1)))) {cur_joint_values(1) = theta(0,1);}
+       if (!(isnan(theta(0,2)))) {cur_joint_values(2) = theta(0,2);}
+       if (!(isnan(theta(0,3)))) {cur_joint_values(3) = theta(0,3);}
+       if (!(isnan(theta(0,4)))) {cur_joint_values(4) = theta(0,4);}
+       if (!(isnan(theta(0,5)))) {cur_joint_values(5) = theta(0,5);}
+    
 
-    joint_angles.data[0] = theta(0,0);
-    joint_angles.data[1] = theta(0,1);
-    joint_angles.data[2] = theta(0,2);
-    joint_angles.data[3] = theta(0,3);
-    joint_angles.data[4] = theta(0,4);
-    joint_angles.data[5] = theta(0,5);
+    joint_angles.data[0] = cur_joint_values(0);
+    joint_angles.data[1] = cur_joint_values(1);
+    joint_angles.data[2] = cur_joint_values(2);
+    joint_angles.data[3] = cur_joint_values(3);
+    joint_angles.data[4] = cur_joint_values(4);
+    joint_angles.data[5] = cur_joint_values(5);
 
-    // ROS_INFO("out");
-    all_joints_pub.publish(joint_angles);
-        
-    joint1_pub.publish(msg1);
-    joint2_pub.publish(msg2);
-    joint3_pub.publish(msg3);
-    joint4_pub.publish(msg4);
-    joint5_pub.publish(msg5);
-    joint6_pub.publish(msg6);
+    
+       cout << "[" << cur_joint_values(0);
+       cout << ", "<< cur_joint_values(1);
+       cout << ", "<< cur_joint_values(2);
+       cout << ", "<< cur_joint_values(3);
+       cout << ", "<< cur_joint_values(4);
+       cout << ", "<< cur_joint_values(5) << "]" << endl; 
+     
+      all_joints_pub.publish(joint_angles);
+     
 
 }
 
@@ -201,6 +203,9 @@ MatrixXd MoveRobot::Trajectory(MatrixXd i_pos, MatrixXd f_pos, double theta_deg)
     dir(0,0) = (diff(0,0))/dist;
     dir(1,0) = (diff(1,0))/dist;
     dir(2,0) = (diff(2,0))/dist;
+    cout << dir(0,0) << endl;
+    cout << dir(1,0) << endl;
+    cout << dir(2,0) << endl;
     double v_max = dist/(t*(1-f_time));
     MatrixXd orientation(3,3);
 
@@ -401,9 +406,10 @@ MatrixXd MoveRobot::Polynome(MatrixXd q, MatrixXd t, double v_i, double a_i, dou
 
 void MoveRobot::NewPositionCallBack(const geometry_msgs::Point pos_msg)
 {
+    //ROS_INFO("Got new pose");
     MatrixXd new_position(3, 1);
     MatrixXd cur_pos (3, 1);
-    
+
     new_position(0, 0) = pos_msg.x;
     new_position(1, 0) = pos_msg.y;
     new_position(2, 0) = pos_msg.z;
@@ -411,30 +417,66 @@ void MoveRobot::NewPositionCallBack(const geometry_msgs::Point pos_msg)
     cur_pos(0, 0) = current_pos(0);
     cur_pos(1, 0) = current_pos(1);
     cur_pos(2, 0) = current_pos(2);
+    /*
+    cout << "Current [";
+    cout << current_pos(0);
+    cout << ", ";
+    cout << current_pos(1);
+    cout << ", ";
+    cout << current_pos(2) << "]";
 
+    cout << " New [";
+    cout << new_position(0);
+    cout << ", ";
+    cout << new_position(1);
+    cout << ", ";
+    cout << new_position(2) << "]" << endl;
+    */
+    MatrixXd e(3,1);
+    e = cur_pos - new_position;
+    /*
+    if (!( (e(0, 0) == 0) && (e(1, 0) == 0) && (e(2,0) == 0) ))
+    {
+        Trajectory(cur_pos, new_position, 0.0);
+    }
+    */
     Trajectory(cur_pos, new_position, 0.0);
-    
+
     current_pos(0) = new_position(0, 0);
     current_pos(1) = new_position(1, 0);
-    current_pos(2) = new_position(2, 0); 
+    current_pos(2) = new_position(2, 0);
+
+
 }
 
 int main(int argc, char**argv)
 {
     ros::init(argc, argv, "irb120_move_robot");
     ros::NodeHandle n;
-    
+
+    //ros::AsyncSpinner spinner(1);
+    //spinner.start();
+
     VectorXd theta(6);
     VectorXd d(6);
     VectorXd a(6);
     VectorXd alpha(6);
     VectorXd cur_pos(3);
+    VectorXd cur_jvals(6);
+    //moveit::planning_interface::MoveGroup moveit_group("manipulator");
+
+    cur_jvals(0) = 0; 
+    cur_jvals(1) = 0;
+    cur_jvals(2) = 0;
+    cur_jvals(3) = 0;
+    cur_jvals(4) = 0;
+    cur_jvals(5) = 0; 
 
     cout << "Initializing Home position" << endl;
 
-    cur_pos(0) = HOME_X;
-    cur_pos(0) = HOME_Y;
-    cur_pos(0) = HOME_Z;
+    cur_pos(0) = -237;//HOME_X;
+    cur_pos(1) = 384;//HOME_Y;
+    cur_pos(2) = 151;//HOME_Z;
 
     cout << "Initializing D-H params" << endl;    
 
@@ -449,7 +491,7 @@ int main(int argc, char**argv)
 
     cout << "Initializing MoveRobot object" << endl;
 
-    MoveRobot obj(theta, d, a, alpha, n, cur_pos);
+    MoveRobot obj(theta, d, a, alpha, n, cur_pos, cur_jvals); //, moveit_group);
 
     //H matrix for making the robot to go to the BGA Workspace center
 
@@ -472,8 +514,8 @@ int main(int argc, char**argv)
     MatrixXd H(4,4);
 
     H = obj.getHomogeneous(ja, d, a, alpha);
-    
-    
+
+
 
     for (int j=0;j<4;j++)
     {
@@ -500,7 +542,7 @@ int main(int argc, char**argv)
 
     MatrixXd home(1,6);
     home = obj.InverseKinematics(H);
-    
+
     ros::Rate loop_rate(10);
     for(int i =1;i<10;i++)
     {
