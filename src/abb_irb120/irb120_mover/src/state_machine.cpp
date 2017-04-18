@@ -41,20 +41,22 @@ MatrixXd JointAngles(1,6);          // The robot current joint angles
 VectorXd ee_current_position(3);    // The robot real position of the end-effector calculated from the JointAngles
 
 void EEPositionFeedBackCB (const sensor_msgs::JointState msg)
-{
-    cout << "Real Joint Values [" << msg.position[0];
-    cout << ", "<< msg.position[1];
-    cout << ", "<< msg.position[2];
-    cout << "," << msg.position[3];
-    cout << ", "<< msg.position[4];
-    cout << ", "<< msg.position[5] << "]" << endl;
-    JointAngles(0,0)=msg.position[0];//*(M_PI/180);
-    JointAngles(0,1)=msg.position[1];//*(M_PI/180);
-    JointAngles(0,2)=msg.position[2];//(M_PI/180);
-    JointAngles(0,3)=msg.position[3];//*(M_PI/180);
-    JointAngles(0,4)=msg.position[4];//*(M_PI/180);
-    JointAngles(0,5)=msg.position[5];//*(M_PI/180);
+{   
 
+    cout << "Real Angle Feedback: ";
+    cout << msg.position[0] << ", ";
+    cout << msg.position[1] << ", ";
+    cout << msg.position[2] << ", ";
+    cout << msg.position[3] << ", ";
+    cout << msg.position[4] << ", ";
+    cout << msg.position[5] << endl;
+
+    JointAngles(0,0)=   msg.position[0];
+    JointAngles(0,1)=  -msg.position[1]; // Joint 1 is inverted on the real robot
+    JointAngles(0,2)=   msg.position[2];
+    JointAngles(0,3)=  -msg.position[3];
+    JointAngles(0,4)=  -msg.position[4]; // Joint 4 is inverted on the real robot
+    JointAngles(0,5)=   msg.position[5]; // Joint 5 is inverted on the real robot
 }
 
 
@@ -63,7 +65,7 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "irb120_state_machine");
     ros::NodeHandle n;
     ros::Publisher robot_state_pub = n.advertise<std_msgs::String>("/irb120/robot_state", 1000);        // Publisher to broadcast the current state of the robot
-    ros::Publisher ee_position_pub = n.advertise<geometry_msgs::Point>("/irb120/ee_pos", 1000); // Publisher to broadcast the position the EE needs to be at
+    ros::Publisher ee_position_pub = n.advertise<std_msgs::Float64MultiArray>("/irb120/ee_pose", 1000); // Publisher to broadcast the position the EE needs to be at
 
     ros::Subscriber ee_pos_sub  = n.subscribe("/joint_states", 100, EEPositionFeedBackCB);      // Subscriber to get the real robot JointAngles
 
@@ -74,65 +76,88 @@ int main(int argc, char **argv) {
     VectorXd d(6);
     VectorXd a(6);
     VectorXd alpha(6);
+    VectorXd cur_pos(3);
 
-    d(0) = 290; d(1)=0; d(2) = 0; d(3) = 302; d(4) = 0; d(5)= 72;
-    a(0) = 0; a(1) = 270; a(2) = 70; a(3) = 0; a(4) = 0; a(5) = 0;
-    alpha(0) = 90 * (M_PI/180.0); alpha(1) = 0* (M_PI/180.0); alpha(2) = 90* (M_PI/180.0);
-    alpha(3) = -90* (M_PI/180.0); alpha(4) = 90* (M_PI/180.0); alpha(5)= 0* (M_PI/180.0);
+    d(0) = 290; 
+    d(1) = 0; 
+    d(2) = 0; 
+    d(3) = 302; 
+    d(4) = 0; 
+    d(5) = 72;
 
-    JointAngles(0,0) = 0.0;
-    JointAngles(0,1) = 0.0;
-    JointAngles(0,2) = 0.0;
-    JointAngles(0,3) = 0.0;
-    JointAngles(0,4) = 0.0;
-    JointAngles(0,5) = 0.0;
+    a(0) = 0; 
+    a(1) = 270; 
+    a(2) = 70; 
+    a(3) = 0; 
+    a(4) = 0; 
+    a(5) = 0;
+
+    alpha(0) = 90 * (M_PI/180.0); 
+    alpha(1) = 0 * (M_PI/180.0); 
+    alpha(2) = 90 * (M_PI/180.0);
+    alpha(3) = -90 * (M_PI/180.0); 
+    alpha(4) = 90 * (M_PI/180.0); 
+    alpha(5) = 0 * (M_PI/180.0);
 
     // MoveBot object to calculate Kinematics
     MoveRobot move_bot(theta, d, a, alpha);
-
+    move_bot.setCurJA(M_PI/2, 0, 0, 0, -M_PI/2, 0);
+    move_bot.setCurPos(0, 302, 558);
     // The homogeneous transformation matrix H from base to tip
     MatrixXd H(4,4);
 
     while (ros::ok()){
 
         // Define vectors that represent the position of the PCB and error
-        VectorXd desired_position(3);
+        VectorXd desired_position(7);
+        VectorXd real_position(3);
         VectorXd ee_error(3);
 
         std_msgs::String state_msg;
-        geometry_msgs::Point desired_position_msg;
+        std_msgs::Float64MultiArray ee_pose;
+        ee_pose.data.resize(7);
 
-        // Calculate the homogeneous matrix to get the current end-effector position
-        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
-        ee_current_position(0) = H(0, 3);
-        ee_current_position(1) = H(1, 3);
-        ee_current_position(2) = H(2, 3);
+        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);    
+
+        ee_pose.data[0] = desired_position(0);
+        ee_pose.data[1] = desired_position(1);
+        ee_pose.data[2] = desired_position(2);
+        ee_pose.data[3] = desired_position(3);
+        ee_pose.data[4] = desired_position(4);
+        ee_pose.data[5] = desired_position(5);
+        ee_pose.data[6] = desired_position(6);
+
+        ee_position_pub.publish(ee_pose);
+
+        real_position(0) = H(0, 3);
+        real_position(1) = H(1, 3);
+        real_position(2) = H(2, 3);
+
+        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+        ee_error(2) = real_position(2) - 1000 * desired_position(6);    
+
+        cout << ee_error << endl;
 
         switch(current_robot_state) {
             // =======================================================================================================================
             // This state initilizes the robot position above the PCB, a hardcoded position where the camera can easily detect the PCB
             // ======================================================================================================================= 
             case Initialization: 
-                cout << "Initialization state ";
+                cout << "Initialization State" << endl;
                 // Set the position of the PCB
-                desired_position(0) = -237;
-                desired_position(1) = 384;
-                desired_position(2) = 151;
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // use ee_position_pub to publish PCB position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg); 
-
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-    //            cout << "Error: [" << abs(ee_current_position(0)) << ", " << abs(ee_current_position(1)) << ", " << abs(ee_current_position(2)) << "]" << endl;
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = DetectPCB;
                 }
 
@@ -150,6 +175,7 @@ int main(int argc, char **argv) {
 
                 // INSERT CODE FOR COMPUTER VISION
                 // USE tf.can_transform to trigger the next state
+                cout << "Detecting PCB" << endl;
 
                 // Publish the robot current state
                 state_msg.data = "DetectPCB";
@@ -161,26 +187,23 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case Move2DetectSOIC:
 
-                // Set the position of the SOIC
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2DetectSOIC State" << endl;
 
-                // Use ee_position_pub to move the robot to SOIC position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                cout << ee_error << endl;
+                if ((abs(ee_error(0) < ERROR_THRESHOLD)) &&
+                        (abs(ee_error(1) < ERROR_THRESHOLD)) &&
+                        (abs(ee_error(2) < ERROR_THRESHOLD))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = DetectSOIC;
                 }
-
                 // Publish the robot current state
                 state_msg.data = "Move2DetectSOIC";
                 robot_state_pub.publish(state_msg);
@@ -206,23 +229,21 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case Move2PickSyringe:
 
-                // Set the position of the Syringe
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2PickSyringe State" << endl;
 
-                // Use ee_position_pub to move the robot to SOIC position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                cout << ee_error << endl;
+                if ((abs(ee_error(0) < ERROR_THRESHOLD)) &&
+                        (abs(ee_error(1) < ERROR_THRESHOLD)) &&
+                        (abs(ee_error(2) < ERROR_THRESHOLD))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = PickSyringe;
                 }
 
@@ -249,24 +270,23 @@ int main(int argc, char **argv) {
             case Move2ReleaseSolderPaste:
                 // Set the position of the PCB to release solder paste
                 // This position should be the one obtained by the CV node
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2ReleaseSolderPaste State" << endl;  
 
-                // Use ee_position_pub to move the robot to PCB position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = ApplySolderPaste;
                 }
+
 
                 // Publish the robot current state
                 state_msg.data = "Move2ReleaseSolderPaste";
@@ -288,22 +308,20 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case Move2DropSyringe:
                 // Set the position of the Syringe
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2DropSyringe State" << endl;
 
-                // Use ee_position_pub to move the robot to syringe position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = DropSyringe;
                 }
 
@@ -330,25 +348,22 @@ int main(int argc, char **argv) {
             case Move2PickSuction:
 
                 // Set the position of the Suction cup to pick it up
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2PickSuction State" << endl;
 
-                // Use ee_position_pub to move the robot to suction cup position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = PickSuction;
                 }
-
                 // Publish the robot current state
                 state_msg.data = "Move2PickSuction";
                 robot_state_pub.publish(state_msg);
@@ -372,22 +387,20 @@ int main(int argc, char **argv) {
             case Move2PickSOIC:
                 // Set the position of the SOIC to pick it up
                 // This position is the one obtained from the CV node
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2PickSOIC State" << endl;
 
-                // Use ee_position_pub to move the robot to ee position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = PickSOIC;
                 }
 
@@ -412,24 +425,22 @@ int main(int argc, char **argv) {
             case Move2PlaceSOIC:
                 // Set the position of the PCB to place the SOIC
                 // This is the position obtained from the CV node
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2PlaceSOIC State" << endl;
 
-                // Use ee_position_pub to move the robot to PCB position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = PlaceSOIC;
-                }
+                }                
 
                 // Publish the robot current state
                 state_msg.data = "Move2PlaceSOIC";
@@ -451,24 +462,23 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case Move2DropSuction:
                 // Set the position of the Suction cup to release
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2DropSuction State" << endl;
 
-                // Use ee_position_pub to move the robot to Suction cup position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = DropSuction;
                 }
+
 
                 // Publish the robot current state
                 state_msg.data = "Move2DropSuction";
@@ -489,22 +499,20 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case Move2PickHotAirPencil:
                 // Set the position of the Hot Air Pencil
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2PickHotAirPencil State" << endl;
 
-                // Use ee_position_pub to move the robot to Hot Air Pencil position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = PickHotAirPencil;
                 }
 
@@ -528,22 +536,20 @@ int main(int argc, char **argv) {
             case Move2SolderPCB:
 
                 // Set the position of the PCB toapply hot air
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2SolderPCB State" << endl;
 
-                // Use ee_position_pub to move the robot to PCB position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = ApplyHotAir;
                 }
 
@@ -567,22 +573,20 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case Move2DropHotAirPencil:
                 // Set the position of the Hot Air Pencil
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "Move2DropHotAirPencil State" << endl;
 
-                // Use ee_position_pub to move the robot to Hot Air Pencil position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "threshold met" << endl;
                     current_robot_state = DropHotAirPencil;
                 }
 
@@ -606,22 +610,20 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case ReturnHome:
                 // Set the home position
-                desired_position(0) = 0.0;
-                desired_position(1) = 0.0;
-                desired_position(2) = 0.0;
+                cout << "ReturnHome State" << endl;
 
-                // Use ee_position_pub to move the robot to PCB position
-                desired_position_msg.x = desired_position(0);
-                desired_position_msg.y = desired_position(1);
-                desired_position_msg.z = desired_position(2);
-                ee_position_pub.publish(desired_position_msg);
+                desired_position(0) =  sqrt(2)/2; //qw
+                desired_position(1) =          0; //qx
+                desired_position(2) =  sqrt(2)/2; //qy
+                desired_position(3) =          0; //qz
+                desired_position(4) =     -0.174; //x
+                desired_position(5) =      0.415; //y
+                desired_position(6) =      0.145; //z
 
-                // Calculate the error between desired and real position
-                // The real position is obtained by subscribing to the /joint_states topic published by the ABB controller
-                ee_error = desired_position - ee_current_position; // Error = desired - real
-
-                // Move to next state when the threshold is met
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) && (abs(ee_error(1)) < ERROR_THRESHOLD) && (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                if ((abs(ee_error(0) < 5)) &&
+                        (abs(ee_error(1) < 5)) &&
+                        (abs(ee_error(2) < 5))) {
+                    cout << "Succesfully Executed" << endl;
                     exit(EXIT_SUCCESS);
                 }
 

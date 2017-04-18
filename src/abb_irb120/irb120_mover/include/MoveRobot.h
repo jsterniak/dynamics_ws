@@ -44,13 +44,21 @@ class MoveRobot{
         ros::Subscriber new_pos;
 
     public:
-        MoveRobot(VectorXd theta_, VectorXd d_, VectorXd a_, VectorXd alpha_, ros::NodeHandle n, VectorXd cur_pos, VectorXd cur_jvals)
+        MoveRobot(VectorXd theta_, VectorXd d_, VectorXd a_, VectorXd alpha_, ros::NodeHandle n, VectorXd cur_pos)
         {
-            theta = theta_;
+            cur_joint_values = theta_;        
+            theta = theta_;    
+            //cur_joint_values(0) *= (M_PI/180);
+            //cur_joint_values(1) *= (M_PI/180);
+            //cur_joint_values(2) *= (M_PI/180);
+            //cur_joint_values(3) *= (M_PI/180);
+            //cur_joint_values(4) *= (M_PI/180);
+            //cur_joint_values(5) *= (M_PI/180);
+
             d = d_;
             a = a_;
             alpha = alpha_;
-            
+                        
             theta(0) = theta(0)         * (M_PI/180);
             theta(1) = (theta(1) + 90)  * (M_PI/180);
             theta(2) = theta(2)         * (M_PI/180);
@@ -59,7 +67,7 @@ class MoveRobot{
             theta(5) = theta(5)         * (M_PI/180);
 
             current_pos = cur_pos;
-            cur_joint_values = cur_jvals;
+            //cur_joint_values = cur_jvals;
             group = new moveit::planning_interface::MoveGroup("manipulator"); //moveit_group;
 
             joint1_pub = n.advertise<std_msgs::Float64>("/irb120/joint_1_position_controller/command",1000);
@@ -71,14 +79,18 @@ class MoveRobot{
             
             all_joints_pub = n.advertise<std_msgs::Float64MultiArray>("/irb120/joint_values", 1000);
 
-            new_pos = n.subscribe("/irb120/ee_pos", 100, &MoveRobot::NewPositionCallBack, this);
+            new_pos = n.subscribe("/irb120/ee_joint_vals", 100, &MoveRobot::NewPositionCallBack, this);
         }
         MoveRobot(VectorXd theta_, VectorXd d_, VectorXd a_, VectorXd alpha_)
-        {
+        {   
+            cur_joint_values = theta_;
             theta = theta_;
             d = d_;
             a = a_;
             alpha = alpha_;
+            
+            VectorXd temp_pos(3);
+            current_pos = temp_pos;
 
             theta(0) = theta(0)         * (M_PI/180);
             theta(1) = (theta(1) + 90)  * (M_PI/180);
@@ -97,6 +109,7 @@ class MoveRobot{
         MatrixXd QuadGen(double theta_i, double theta_f, double ang_v, double t_start, double t_final);
         MatrixXd CubGen(double theta_i, double theta_f, double ang_vi, double ang_vf, double t_start, double t_final);
         MatrixXd Polynome(MatrixXd q, MatrixXd t, double v_i, double a_i, double v_f, double a_f);
-        void NewPositionCallBack (const geometry_msgs::Point pos);
-
+        void NewPositionCallBack (const std_msgs::Float64MultiArray msg);
+        void setCurJA(double j0, double j1, double j2, double j3, double j4, double j5);
+        void setCurPos(double x, double y, double z);
 };
