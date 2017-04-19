@@ -1,28 +1,15 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(irb120_mover)
+project(irb120_fakestate)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  geometry_msgs
-  std_msgs
   roscpp
-  moveit_ros_planning_interface
+  irb120_mover
   message_generation
 )
 find_package(cmake_modules REQUIRED)
-find_package(Eigen REQUIRED)
-
-add_message_files(
-  FILES
-  robot_state.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
 
 ###################################
 ## catkin specific configuration ##
@@ -35,14 +22,20 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES irb120_mover
-  CATKIN_DEPENDS roscpp geometry_msgs std_msgs moveit_ros_planning_interface message_runtime
+#  LIBRARIES irb120_fakestate
+  CATKIN_DEPENDS roscpp message_runtime
 #  DEPENDS system_lib
 )
 
 ###########
 ## Build ##
 ###########
+
+#recurse for headers so they are displayed
+file (GLOB_RECURSE HEADERS
+*.h
+*.hpp
+)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -52,39 +45,22 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-## Declare a C++ library
-# add_library(irb120_mover
-#   src/${PROJECT_NAME}/irb120_mover.cpp
-# )
-
-#FILE(GLOB_RECURSE LibFiles "include/*.hpp")
-#add_custom_target(headers SOURCES ${LibFiles})
-
-## Declare a C++ executable
- add_executable(irb120_mover_node src/main.cpp)
- add_executable(irb120_main_loop src/state_machine.cpp)
- add_executable(irb120_move_robot src/MoveRobot.cpp)
- add_executable(irb120_robot_mover src/robot_mover.cpp)
-## Specify libraries to link a library or executable target against
-add_library(irb120_move_robot_lib src/MoveRobot.cpp)
-add_dependencies(irb120_main_loop ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(irb120_main_loop irb120_move_robot_lib)
-
- target_link_libraries(irb120_mover_node
-   ${catkin_LIBRARIES}
+#all c/cpp files and headers above, except file with main
+set (SOURCE_FILES_LIB
+  ${HEADERS}
+  src/irb120_fakestate.cpp
 )
 
- target_link_libraries(irb120_main_loop
-   ${catkin_LIBRARIES}
- )
+#source file with main() only
+set (SOURCE_FILES
+  src/irb120_fakestate_node.cpp
+)
 
- target_link_libraries(irb120_robot_mover
-   ${catkin_LIBRARIES}
- )
+add_library(${PROJECT_NAME}_lib ${SOURCE_FILES_LIB})
+add_executable(${PROJECT_NAME} ${SOURCE_FILES})
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_lib ${catkin_LIBRARIES})
 
- target_link_libraries(irb120_move_robot
-   ${catkin_LIBRARIES}
- )
 #############
 ## Install ##
 #############
@@ -100,7 +76,7 @@ target_link_libraries(irb120_main_loop irb120_move_robot_lib)
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS irb120_mover irb120_mover_node
+# install(TARGETS irb120_fakestate irb120_fakestate_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -125,7 +101,7 @@ target_link_libraries(irb120_main_loop irb120_move_robot_lib)
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_irb120_mover.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_irb120_fakestate.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
