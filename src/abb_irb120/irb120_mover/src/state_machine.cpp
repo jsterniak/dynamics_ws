@@ -3,39 +3,12 @@
 #include <geometry_msgs/Point.h>
 #include <sensor_msgs/JointState.h>
 #include "MoveRobot.h"
+#include "state_machine.hpp"
+#include "irb120_mover/robot_state.h"
 
 #define ERROR_THRESHOLD 0.0
 
-
-enum RobotState {
-    Initialization = 0, 
-    DetectPCB = 1, 
-    Move2DetectSOIC = 2,
-    DetectSOIC = 3,
-    Move2PickSyringe = 4,
-    PickSyringe = 5,
-    Move2ReleaseSolderPaste = 6,
-    ApplySolderPaste = 7,
-    Move2DropSyringe = 8,
-    DropSyringe = 9,
-    Move2PickSuction = 10,
-    PickSuction = 11,
-    Move2PickSOIC = 12,
-    PickSOIC = 13,
-    Move2PlaceSOIC = 14,
-    PlaceSOIC = 15,
-    Move2DropSuction = 16,
-    DropSuction = 17,
-    Move2PickHotAirPencil = 18,
-    PickHotAirPencil = 19,
-    Move2SolderPCB = 20,
-    ApplyHotAir = 21,
-    Move2DropHotAirPencil = 22,
-    DropHotAirPencil = 23,
-    ReturnHome = 24
-};
-
-int current_robot_state = Initialization;
+IRBStateMachine::RobotState current_robot_state;
 
 MatrixXd JointAngles(1,6);          // The robot current joint angles
 VectorXd ee_current_position(3);    // The robot real position of the end-effector calculated from the JointAngles
@@ -59,17 +32,31 @@ void EEPositionFeedBackCB (const sensor_msgs::JointState msg)
     JointAngles(0,5)=   msg.position[5]; // Joint 5 is inverted on the real robot
 }
 
+IRBStateMachine::RobotState last_actuated_state_;
+
+void ActuationStateCB (const irb120_mover::robot_stateConstPtr& msg)
+{
+  last_actuated_state_ = static_cast<IRBStateMachine::RobotState>(msg->actual_state);
+}
+
+void publish_state(const ros::Publisher& f_pub, const IRBStateMachine::RobotState f_state)
+{
+  irb120_mover::robot_state state_msg;
+  state_msg.actual_state = f_state;
+  f_pub.publish(state_msg);
+}
 
 int main(int argc, char **argv) {
 
     ros::init(argc, argv, "irb120_state_machine");
     ros::NodeHandle n;
-    ros::Publisher robot_state_pub = n.advertise<std_msgs::String>("/irb120/robot_state", 1000);        // Publisher to broadcast the current state of the robot
+    ros::Publisher robot_state_pub = n.advertise<irb120_mover::robot_state>("/irb120/robot_state", 1000);        // Publisher to broadcast the current state of the robot
     ros::Publisher ee_position_pub = n.advertise<std_msgs::Float64MultiArray>("/irb120/ee_pose", 1000); // Publisher to broadcast the position the EE needs to be at
 
     ros::Subscriber ee_pos_sub  = n.subscribe("/joint_states", 100, EEPositionFeedBackCB);      // Subscriber to get the real robot JointAngles
+    ros::Subscriber actuator_state_sub = n.subscribe("/irb120/actuation_state_complete", 100, ActuationStateCB);
 
-    ros::Rate loop_rate(2); // Publishing at 50 ms = 2Hz
+    ros::Rate loop_rate(20); // Publishing at 50 ms = 20Hz
 
     // Initializing D-H parameters of the robot
     VectorXd theta(6);
@@ -106,6 +93,10 @@ int main(int argc, char **argv) {
     // The homogeneous transformation matrix H from base to tip
     MatrixXd H(4,4);
 
+    // initialize states
+    current_robot_state = IRBStateMachine::Initialization;
+    last_actuated_state_ = IRBStateMachine::Initialization;
+
     while (ros::ok()){
 
         // Define vectors that represent the position of the PCB and error
@@ -113,7 +104,6 @@ int main(int argc, char **argv) {
         VectorXd real_position(3);
         VectorXd ee_error(3);
 
-        std_msgs::String state_msg;
         std_msgs::Float64MultiArray ee_pose;
         ee_pose.data.resize(7);
 
@@ -143,7 +133,7 @@ int main(int argc, char **argv) {
             // =======================================================================================================================
             // This state initilizes the robot position above the PCB, a hardcoded position where the camera can easily detect the PCB
             // ======================================================================================================================= 
-            case Initialization: 
+            case IRBStateMachine::Initialization:
                 cout << "Initialization State" << endl;
                 // Set the position of the PCB
                 desired_position(0) =  sqrt(2)/2; //qw
@@ -158,12 +148,11 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = DetectPCB;
+                    current_robot_state = IRBStateMachine::DetectPCB;
                 }
 
                 // Publish the robot current state
-                state_msg.data = "Initialization";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Initialization);
 
                 break;
 
@@ -171,21 +160,20 @@ int main(int argc, char **argv) {
                 // =======================================================================================================================
                 // ============== This state uses the computer vision node to obtain the position and orientation of the PCB =============
                 // ======================================================================================================================= 
-            case DetectPCB:
+            case IRBStateMachine::DetectPCB:
 
                 // INSERT CODE FOR COMPUTER VISION
                 // USE tf.can_transform to trigger the next state
                 cout << "Detecting PCB" << endl;
 
                 // Publish the robot current state
-                state_msg.data = "DetectPCB";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::DetectPCB);
                 break;
 
                 // =======================================================================================================================
                 // === This state moves the robot to a position above the SOIC, within the camera view to determine the SOIC position ====
                 // ======================================================================================================================= 
-            case Move2DetectSOIC:
+            case IRBStateMachine::Move2DetectSOIC:
 
                 cout << "Move2DetectSOIC State" << endl;
 
@@ -202,11 +190,10 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < ERROR_THRESHOLD)) &&
                         (abs(ee_error(2) < ERROR_THRESHOLD))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = DetectSOIC;
+                    current_robot_state = IRBStateMachine::DetectSOIC;
                 }
                 // Publish the robot current state
-                state_msg.data = "Move2DetectSOIC";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2DetectSOIC);
 
                 break;
 
@@ -214,20 +201,19 @@ int main(int argc, char **argv) {
                 // =======================================================================================================================
                 // ============= This state uses the computer vision node to obtain the position and orientation of the SOIC =============
                 // ======================================================================================================================= 
-            case DetectSOIC:
+            case IRBStateMachine::DetectSOIC:
 
                 // INSERT CODE FOR COMPUTER VISION
                 // USE tf.can_transform to trigger the next state
 
                 // Publish the robot current state
-                state_msg.data = "DetectSOIC";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::DetectSOIC);
                 break;
 
                 // =======================================================================================================================
                 // ======================= This state moves the robot to the position of the syringe to pick it up =======================
                 // ======================================================================================================================= 
-            case Move2PickSyringe:
+            case IRBStateMachine::Move2PickSyringe:
 
                 cout << "Move2PickSyringe State" << endl;
 
@@ -244,30 +230,34 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < ERROR_THRESHOLD)) &&
                         (abs(ee_error(2) < ERROR_THRESHOLD))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = PickSyringe;
+                    current_robot_state = IRBStateMachine::PickSyringe;
                 }
 
                 // Publish the robot current state
-                state_msg.data = "Move2PickSyringe";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2PickSyringe);
 
                 break;
 
                 // =======================================================================================================================
                 // ======================== This state executes the pick up action to grip the syringe ===================================
                 // ======================================================================================================================= 
-            case PickSyringe:
+            case IRBStateMachine::PickSyringe:
 
-                // INSERT CODE TO PICK UP SYRINGE
-                // I'M NOT SURE HOW TO DO THIS YET
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2ReleaseSolderPaste;
+                }
+                else
+                {
+                  // do nothing
+                }
 
                 // Publish the robot current state
-                state_msg.data = "PickSyringe";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::PickSyringe);
 
                 break;
 
-            case Move2ReleaseSolderPaste:
+            case IRBStateMachine::Move2ReleaseSolderPaste:
                 // Set the position of the PCB to release solder paste
                 // This position should be the one obtained by the CV node
                 cout << "Move2ReleaseSolderPaste State" << endl;  
@@ -284,29 +274,36 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = ApplySolderPaste;
+                    current_robot_state = IRBStateMachine::ApplySolderPaste;
                 }
 
 
                 // Publish the robot current state
-                state_msg.data = "Move2ReleaseSolderPaste";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2ReleaseSolderPaste);
                 break;
 
                 // =======================================================================================================================
                 // ======================================= This state applies the solder paste ===========================================
                 // =======================================================================================================================
-            case ApplySolderPaste:
-                // NOTE: WE WOULD HAVE A LIST OF NODES HERE TO APPLY THE SOLDER PASTE
+            case IRBStateMachine::ApplySolderPaste:
+
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2DropSyringe;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "ApplySolderPaste";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::ApplySolderPaste);
                 break;
 
                 // =======================================================================================================================
                 // ======================= This state moves the robot to the position of the syringe to drop it off ======================
                 // ======================================================================================================================= 
-            case Move2DropSyringe:
+            case IRBStateMachine::Move2DropSyringe:
                 // Set the position of the Syringe
                 cout << "Move2DropSyringe State" << endl;
 
@@ -322,22 +319,29 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = DropSyringe;
+                    current_robot_state = IRBStateMachine::DropSyringe;
                 }
 
                 // Publish the robot current state
-                state_msg.data = "Move2DropSyringe";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2DropSyringe);
 
                 break;
 
                 // =======================================================================================================================
                 // ============================================ This state drops the syringe =========== =================================
                 // =======================================================================================================================
-            case DropSyringe:
+            case IRBStateMachine::DropSyringe:
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2PickSuction;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "DropSyringe";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::DropSyringe);
 
                 break;
 
@@ -345,7 +349,7 @@ int main(int argc, char **argv) {
                 // =======================================================================================================================
                 // ===================== This state moves the robot to the position of the suction cup to pick it up =====================
                 // ======================================================================================================================= 
-            case Move2PickSuction:
+            case IRBStateMachine::Move2PickSuction:
 
                 // Set the position of the Suction cup to pick it up
                 cout << "Move2PickSuction State" << endl;
@@ -362,11 +366,10 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = PickSuction;
+                    current_robot_state = IRBStateMachine::PickSuction;
                 }
                 // Publish the robot current state
-                state_msg.data = "Move2PickSuction";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2PickSuction);
 
 
                 break;
@@ -375,16 +378,24 @@ int main(int argc, char **argv) {
                 // =======================================================================================================================
                 // ========================================= This state picks up the suction cup =========================================
                 // =======================================================================================================================
-            case PickSuction:
+            case IRBStateMachine::PickSuction:
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2PickSOIC;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "PickSuction";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::PickSuction);
                 break;
 
                 // =======================================================================================================================
                 // ======================== This state moves the robot to the position of the SOIC to pick it up =========================
                 // ======================================================================================================================= 
-            case Move2PickSOIC:
+            case IRBStateMachine::Move2PickSOIC:
                 // Set the position of the SOIC to pick it up
                 // This position is the one obtained from the CV node
                 cout << "Move2PickSOIC State" << endl;
@@ -401,28 +412,35 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = PickSOIC;
+                    current_robot_state = IRBStateMachine::PickSOIC;
                 }
 
                 // Publish the robot current state
-                state_msg.data = "Move2PickSOIC";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2PickSOIC);
 
                 break;
 
                 // =======================================================================================================================
                 // ========================================== This state picks up the SOIC ===============================================
                 // =======================================================================================================================
-            case PickSOIC:
+            case IRBStateMachine::PickSOIC:
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2PlaceSOIC;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "PickSOIC";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::PickSOIC);
                 break;
 
                 // =======================================================================================================================
                 // ====================== This state moves the robot to the position of the PCB to place the SOIC  =======================
                 // ======================================================================================================================= 
-            case Move2PlaceSOIC:
+            case IRBStateMachine::Move2PlaceSOIC:
                 // Set the position of the PCB to place the SOIC
                 // This is the position obtained from the CV node
                 cout << "Move2PlaceSOIC State" << endl;
@@ -439,28 +457,35 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = PlaceSOIC;
+                    current_robot_state = IRBStateMachine::PlaceSOIC;
                 }                
 
                 // Publish the robot current state
-                state_msg.data = "Move2PlaceSOIC";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2PlaceSOIC);
 
                 break;
 
                 // =======================================================================================================================
                 // ====================================== This state places the SOIC on top of PCB =======================================
                 // =======================================================================================================================
-            case PlaceSOIC:
+            case IRBStateMachine::PlaceSOIC:
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2DropSuction;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "PlaceSOIC";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::PlaceSOIC);
                 break;
 
                 // =======================================================================================================================
                 // ====================== This state moves the robot to the position of the suction to drop it off  ======================
                 // ======================================================================================================================= 
-            case Move2DropSuction:
+            case IRBStateMachine::Move2DropSuction:
                 // Set the position of the Suction cup to release
                 cout << "Move2DropSuction State" << endl;
 
@@ -476,28 +501,35 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = DropSuction;
+                    current_robot_state = IRBStateMachine::DropSuction;
                 }
 
 
                 // Publish the robot current state
-                state_msg.data = "Move2DropSuction";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2DropSuction);
                 break;
 
                 // =======================================================================================================================
                 // ========================================== This state drops the suction cup ===========================================
                 // =======================================================================================================================
-            case DropSuction:
+            case IRBStateMachine::DropSuction:
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2PickHotAirPencil;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "DropSuction";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::DropSuction);
                 break;
 
                 // =======================================================================================================================
                 // ==================== This state moves the robot to the position of the hot air pencil to pick it up ===================
                 // ======================================================================================================================= 
-            case Move2PickHotAirPencil:
+            case IRBStateMachine::Move2PickHotAirPencil:
                 // Set the position of the Hot Air Pencil
                 cout << "Move2PickHotAirPencil State" << endl;
 
@@ -513,27 +545,34 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = PickHotAirPencil;
+                    current_robot_state = IRBStateMachine::PickHotAirPencil;
                 }
 
                 // Publish the robot current state
-                state_msg.data = "Move2HotAirPencil";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2PickHotAirPencil);
                 break;
 
                 // =======================================================================================================================
                 // ======================================= This state picks up the hot air pencil ========================================
                 // =======================================================================================================================
-            case PickHotAirPencil:
+            case IRBStateMachine::PickHotAirPencil:
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2SolderPCB;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "PickHotAirPencil";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::PickHotAirPencil);
                 break;
 
                 // =======================================================================================================================
                 // ===================== This state moves the robot to the position of the PCB to perform soldering ======================
                 // ======================================================================================================================= 
-            case Move2SolderPCB:
+            case IRBStateMachine::Move2SolderPCB:
 
                 // Set the position of the PCB toapply hot air
                 cout << "Move2SolderPCB State" << endl;
@@ -550,28 +589,34 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = ApplyHotAir;
+                    current_robot_state = IRBStateMachine::ApplyHotAir;
                 }
 
                 // Publish the robot current state
-                state_msg.data = "Move2SolderPCB";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2SolderPCB);
                 break;
 
                 // =======================================================================================================================
                 // ================================= This state applies hot air to melt the solder paste =================================
                 // =======================================================================================================================
-            case ApplyHotAir:
-                // WE WOULD HAVE A LIST OF POINTS HERE CAUSE WE'RE MOVING THE HOT AIR AROUND
+            case IRBStateMachine::ApplyHotAir:
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::Move2ReleaseSolderPaste;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "ApplyHotAir";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::ApplyHotAir);
                 break;
 
                 // =======================================================================================================================
                 // =================== This state moves the robot to the position of the hot air pencil to drop it off ===================
                 // ======================================================================================================================= 
-            case Move2DropHotAirPencil:
+            case IRBStateMachine::Move2DropHotAirPencil:
                 // Set the position of the Hot Air Pencil
                 cout << "Move2DropHotAirPencil State" << endl;
 
@@ -587,28 +632,35 @@ int main(int argc, char **argv) {
                         (abs(ee_error(1) < 5)) &&
                         (abs(ee_error(2) < 5))) {
                     cout << "threshold met" << endl;
-                    current_robot_state = DropHotAirPencil;
+                    current_robot_state = IRBStateMachine::DropHotAirPencil;
                 }
 
                 // Publish the robot current state
-                state_msg.data = "Move2DropHotAirPencil";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::Move2DropHotAirPencil);
                 break;
 
                 // =======================================================================================================================
                 // ========================================= This state releases the hot air pencil ======================================
                 // =======================================================================================================================
-            case DropHotAirPencil:
+            case IRBStateMachine::DropHotAirPencil:
+                if (last_actuated_state_ == current_robot_state)
+                {
+                  current_robot_state = IRBStateMachine::ReturnHome;
+                }
+                else
+                {
+                  // do nothing
+                }
+
                 // Publish the robot current state
-                state_msg.data = "DropHotAirPencil";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::DropHotAirPencil);
 
                 break;
 
                 // =======================================================================================================================
                 // ======================= This state moves the robot to home position and terminates the program ========================
                 // ======================================================================================================================= 
-            case ReturnHome:
+            case IRBStateMachine::ReturnHome:
                 // Set the home position
                 cout << "ReturnHome State" << endl;
 
@@ -628,8 +680,7 @@ int main(int argc, char **argv) {
                 }
 
                 // Publish the robot current state
-                state_msg.data = "ReturnHome";
-                robot_state_pub.publish(state_msg);
+                publish_state(robot_state_pub, IRBStateMachine::ReturnHome);
 
                 break;
 

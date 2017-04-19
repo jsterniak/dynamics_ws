@@ -9,9 +9,20 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   roscpp
   moveit_ros_planning_interface
+  message_generation
 )
 find_package(cmake_modules REQUIRED)
 find_package(Eigen REQUIRED)
+
+add_message_files(
+  FILES
+  robot_state.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -25,7 +36,7 @@ find_package(Eigen REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES irb120_mover
-  CATKIN_DEPENDS roscpp moveit_ros_planning_interface
+  CATKIN_DEPENDS roscpp geometry_msgs std_msgs moveit_ros_planning_interface message_runtime
 #  DEPENDS system_lib
 )
 
