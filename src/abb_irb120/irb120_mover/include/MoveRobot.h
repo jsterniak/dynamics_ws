@@ -3,7 +3,7 @@
 #include <iostream>
 #include <math.h>
 #include <iomanip>
-#include <eigen/Eigen/Dense>
+#include <Eigen/Dense>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Point.h>
 #include <std_msgs/Float64MultiArray.h>
