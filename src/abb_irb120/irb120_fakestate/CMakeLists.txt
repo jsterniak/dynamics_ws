@@ -7,7 +7,6 @@ project(irb120_fakestate)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   irb120_mover
-  message_generation
 )
 find_package(cmake_modules REQUIRED)
 
@@ -23,7 +22,7 @@ find_package(cmake_modules REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES irb120_fakestate
-  CATKIN_DEPENDS roscpp message_runtime
+  CATKIN_DEPENDS roscpp
 #  DEPENDS system_lib
 )
 
@@ -58,7 +57,6 @@ set (SOURCE_FILES
 
 add_library(${PROJECT_NAME}_lib ${SOURCE_FILES_LIB})
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_lib ${catkin_LIBRARIES})
 
 #############

@@ -1,10 +1,10 @@
 #include <ros/ros.h>
-#include <std_msgs/String.h>
+#include <std_msgs/Float64MultiArray.h>
+#include <std_msgs/Int32.h>
 #include <geometry_msgs/Point.h>
 #include <sensor_msgs/JointState.h>
 #include "MoveRobot.h"
 #include "state_machine.hpp"
-#include "irb120_mover/robot_state.h"
 
 #define ERROR_THRESHOLD 0.0
 
@@ -34,15 +34,15 @@ void EEPositionFeedBackCB (const sensor_msgs::JointState msg)
 
 IRBStateMachine::RobotState last_actuated_state_;
 
-void ActuationStateCB (const irb120_mover::robot_stateConstPtr& msg)
+void ActuationStateCB (const std_msgs::Int32ConstPtr& msg)
 {
-  last_actuated_state_ = static_cast<IRBStateMachine::RobotState>(msg->actual_state);
+  last_actuated_state_ = static_cast<IRBStateMachine::RobotState>(msg->data);
 }
 
 void publish_state(const ros::Publisher& f_pub, const IRBStateMachine::RobotState f_state)
 {
-  irb120_mover::robot_state state_msg;
-  state_msg.actual_state = f_state;
+  std_msgs::Int32 state_msg;
+  state_msg.data = f_state;
   f_pub.publish(state_msg);
 }
 
@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
 
     ros::init(argc, argv, "irb120_state_machine");
     ros::NodeHandle n;
-    ros::Publisher robot_state_pub = n.advertise<irb120_mover::robot_state>("/irb120/robot_state", 1000);        // Publisher to broadcast the current state of the robot
+    ros::Publisher robot_state_pub = n.advertise<std_msgs::Int32>("/irb120/robot_state", 1000);        // Publisher to broadcast the current state of the robot
     ros::Publisher ee_position_pub = n.advertise<std_msgs::Float64MultiArray>("/irb120/ee_pose", 1000); // Publisher to broadcast the position the EE needs to be at
 
     ros::Subscriber ee_pos_sub  = n.subscribe("/joint_states", 100, EEPositionFeedBackCB);      // Subscriber to get the real robot JointAngles
