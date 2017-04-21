@@ -1,0 +1,20 @@
+#ifndef CALIBRATEDVIDEO
+#define CALIBRATEDVIDEO
+
+#include <ros/ros.h>
+#include <ros/package.h>
+#include <sensor_msgs/Image.h>
+#include <opencv2/core/core/hpp>
+
+class CalibratedVideo{
+public:
+  CalibratedVideo(ros::NodeHandle n);
+
+  // Callback function.
+  void send_video(const sensor_msgs::ImageConstPtr& img);
+  ros::Subscriber img_sub;
+  ros::Publisher img_pub;
+  cv::Mat cameraMatrix, distCoeffs;
+};
+
+#endif

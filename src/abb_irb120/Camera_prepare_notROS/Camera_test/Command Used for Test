@@ -1,0 +1,2 @@
+Command used for test:
+g++ -o ttt perception_node.cpp `pkg-config opencv --cflags --libs`
