@@ -28,7 +28,7 @@ void CIRBActuator::update_and_send(const bool f_force_send)
     std::string t_string(1, send_byte_);
 
     size_t t_bytes_written = serial_.write(t_string);
-
+    ROS_INFO("Received %d: ", send_byte_);
     ROS_INFO("sent %d bytes", t_bytes_written);
   }
   else
