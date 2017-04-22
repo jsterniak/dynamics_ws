@@ -244,23 +244,27 @@ int main(int argc, char **argv) {
                     //point 1: 0.0375, 0.337, 0.502
                     //point 2: -0.023, 0.437, 0.502
                     //point 3: -0.023, 0.437, 0.3885
-                    double via_point[3][7] = {{sqrt(2)/2, 0, sqrt(2)/2, 0, 0.0375, 0.337, 0.502},
+                   
+                    double via_point[3][7] = 
+                    {
+                        {sqrt(2)/2, 0, sqrt(2)/2, 0, 0.0375, 0.337, 0.502},
                         {sqrt(2)/2, 0, sqrt(2)/2, 0, -0.023, 0.437, 0.502},
-                        {sqrt(2)/2, 0, sqrt(2)/2, 0, -0.023, 0.437, 0.3885}};
+                        {sqrt(2)/2, 0, sqrt(2)/2, 0, -0.023, 0.437, 0.3885}
+                    };
 
                     //cout << "Move2PickSyringe State" << endl;
-                    int via_p = 0;
+                    int via_p_cnt = 0;
 
-                    while (via_p < 3){
-                        cout << "Move2PickSyringe State " << via_p << endl;
+                    while (via_p_cnt < 3){
+                        cout << "Move2PickSyringe State " << via_p_cnt << endl;
 
-                        desired_position(0) =  via_point[via_p][0]; //qw
-                        desired_position(1) =  via_point[via_p][1]; //qx
-                        desired_position(2) =  via_point[via_p][2]; //qy
-                        desired_position(3) =  via_point[via_p][3]; //qz
-                        desired_position(4) =  via_point[via_p][4]; //x
-                        desired_position(5) =  via_point[via_p][5]; //y
-                        desired_position(6) =  via_point[via_p][6]; //z
+                        desired_position(0) =  via_point[via_p_cnt][0]; //qw
+                        desired_position(1) =  via_point[via_p_cnt][1]; //qx
+                        desired_position(2) =  via_point[via_p_cnt][2]; //qy
+                        desired_position(3) =  via_point[via_p_cnt][3]; //qz
+                        desired_position(4) =  via_point[via_p_cnt][4]; //x
+                        desired_position(5) =  via_point[via_p_cnt][5]; //y
+                        desired_position(6) =  via_point[via_p_cnt][6]; //z
 
                         H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
 
@@ -286,7 +290,7 @@ int main(int argc, char **argv) {
                             (abs(ee_error(1)) < ERROR_THRESHOLD) &&
                             (abs(ee_error(2)) < ERROR_THRESHOLD)) {
                             cout << "threshold met" << endl;
-                            via_p++;
+                            via_p_cnt++;
                         }
 
 
