@@ -112,10 +112,10 @@ int main(int argc, char **argv) {
             case IRBStateMachine::Initialization:
                 cout << "Initialization State" << endl;
                 // Set the position of the PCB
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
+                desired_position(0) =   0.7257;//sqrt(2)/2; //qw
+                desired_position(1) =   0; //qx
+                desired_position(2) =   0.68802;//sqrt(2)/2; //qy
+                desired_position(3) =   0; //qz
                 desired_position(4) =     -0.304; //x
                 desired_position(5) =      0.346; //y
                 desired_position(6) =      0.160; //z
