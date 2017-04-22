@@ -106,11 +106,11 @@ MatrixXd MoveRobot::getHomogeneous(MatrixXd q_values, VectorXd d, VectorXd a, Ve
     MatrixXd theta(1,6);
 
     theta(0,0) = q_values(0,0);
-    theta(0,1) = q_values(0,1) + (90 * (M_PI/180));
+    theta(0,1) = q_values(0,1) - (90 * (M_PI/180));
     theta(0,2) = q_values(0,2);
     theta(0,3) = q_values(0,3);
     theta(0,4) = q_values(0,4);
-    theta(0,5) = q_values(0,5);
+    theta(0,5) = q_values(0,5) + (M_PI);
 
 
     T01 = MatrixTransformation(theta(0,0),d(0),a(0),alpha(0));
