@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   roslib
+  image_transport
 )
 
 ## System dependencies are found with CMake's conventions
