@@ -13,8 +13,8 @@ int type = 0;
 void EEPoseCallBack(const std_msgs::Float64MultiArray msg)
 {
 
-    if (msg.data[7] == 0)
-    {
+
+
         ee_target_pose.orientation.w = msg.data[0];
         ee_target_pose.orientation.x = msg.data[1];
         ee_target_pose.orientation.y = msg.data[2];
@@ -26,24 +26,6 @@ void EEPoseCallBack(const std_msgs::Float64MultiArray msg)
         type = 0;
         std::cout << "Robot Mover Receiving: ";
         std::cout << ee_target_pose << std::endl;
-    }
-    else if (msg.data[7] == 1){
-        ee_target_joints[0] = msg.data[0];
-        ee_target_joints[1] = msg.data[1];
-        ee_target_joints[2] = msg.data[2];
-        ee_target_joints[3] = msg.data[3];
-        ee_target_joints[4] = msg.data[4];
-        ee_target_joints[5] = msg.data[5];
-        type = 1;
-        flag = 2;
-        std::cout << "Robot Mover Receiving: ";
-        std::cout << ee_target_joints[0] << ", " 
-            << ee_target_joints[1] << ", " 
-            << ee_target_joints[2] << ", " 
-            << ee_target_joints[3] << ", " 
-            << ee_target_joints[4] << ", " 
-            << ee_target_joints[5] << ", " << std::endl;
-    }
 
 
 }
@@ -81,20 +63,6 @@ int main(int argc, char **argv)
             //ROS_INFO("Going to arbitrary position in 2 seconds");
         }
 
-        else if (flag == 2 && type == 1) {
-            flag = 0;
-            ROS_INFO("set new pose");
-            group.setJointValueTarget(ee_target_joints);
-
-            moveit::planning_interface::MoveGroup::Plan my_plan;
-            bool success = group.plan(my_plan);
-
-            // Uncomment below line when working with a real robot
-            group.move();
-            sleep(5.0);
-            //ROS_INFO("Going to arbitrary position in 2 seconds");
-
-        }
         ros::spinOnce();
 
     }

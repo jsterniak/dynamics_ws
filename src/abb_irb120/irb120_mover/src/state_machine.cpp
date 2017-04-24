@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
     last_actuated_state_ = IRBStateMachine::Initialization;
 
     std_msgs::Float64MultiArray ee_pose;
-    ee_pose.data.resize(8);
+    ee_pose.data.resize(7);
     // Define vectors that represent the position of the PCB and error
     VectorXd desired_position(7);
     VectorXd real_position(3);
@@ -122,8 +122,8 @@ int main(int argc, char **argv) {
                 desired_position(6) =      0.1600; //z
 
                 H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
-                cout << H << endl;
-                cout << "======" << endl;
+                //cout << H << endl;
+                //cout << "======" << endl;
                 ee_pose.data[0] = desired_position(0);
                 ee_pose.data[1] = desired_position(1);
                 ee_pose.data[2] = desired_position(2);
@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
                 ee_pose.data[4] = desired_position(4);
                 ee_pose.data[5] = desired_position(5);
                 ee_pose.data[6] = desired_position(6);
-                ee_pose.data[7] = 0;
+
 
                 ee_position_pub.publish(ee_pose);
 
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
                         ee_pose.data[4] = desired_position(4);
                         ee_pose.data[5] = desired_position(5);
                         ee_pose.data[6] = desired_position(6);
-                        ee_pose.data[7] = 0;
+
 
                         ee_position_pub.publish(ee_pose);
 
@@ -271,9 +271,6 @@ int main(int argc, char **argv) {
 
                     double via_point[3][6] = 
                     {
-                        //{0,      0, 0, 0, 0, 0, -10},
-                        //{M_PI/2, 0, 0, 0, 0, 0, -10},
-                        //{M_PI,   0, 0, 0, 0, 0, -10}
                         {-3.12769, 0.02070, 2.16441, 0.0041, 0.2257, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.3925}
@@ -310,7 +307,7 @@ int main(int argc, char **argv) {
                         ee_pose.data[4] = desired_position(4);
                         ee_pose.data[5] = desired_position(5);
                         ee_pose.data[6] = desired_position(6);
-                        ee_pose.data[7] = 0;
+
 
                         ee_position_pub.publish(ee_pose);
 
@@ -356,7 +353,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PickSyringe);
-
+                current_robot_state = IRBStateMachine::Move2ReleaseSolderPaste; // only for testing, delete later
                 break;
 
             case IRBStateMachine::Move2ReleaseSolderPaste:
@@ -370,7 +367,7 @@ int main(int argc, char **argv) {
                     {
                         {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.0430, 0.2466, 0.4237},
-                        {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.3925}
+                        {-3.12769, 0.02070, 2.16441, -0.1984, 0.2893, 0.2857}
                     };
 
                     int via_p_cnt = 0;
@@ -378,13 +375,21 @@ int main(int argc, char **argv) {
                     while (via_p_cnt < n_via_point){
                         cout << "Move2ReleaseSolderPaste State " << via_p_cnt << endl;
 
-                        desired_position(0) =  via_point[via_p_cnt][0]; //qw
-                        desired_position(1) =  via_point[via_p_cnt][1]; //qx
-                        desired_position(2) =  via_point[via_p_cnt][2]; //qy
-                        desired_position(3) =  via_point[via_p_cnt][3]; //qz
-                        desired_position(4) =  via_point[via_p_cnt][4]; //x
-                        desired_position(5) =  via_point[via_p_cnt][5]; //y
-                        desired_position(6) =  via_point[via_p_cnt][6]; //z
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
 
                         H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
 
@@ -395,7 +400,7 @@ int main(int argc, char **argv) {
                         ee_pose.data[4] = desired_position(4);
                         ee_pose.data[5] = desired_position(5);
                         ee_pose.data[6] = desired_position(6);
-                        ee_pose.data[7] = 0;
+
 
                         ee_position_pub.publish(ee_pose);
 
@@ -431,7 +436,7 @@ int main(int argc, char **argv) {
                 // ======================================= This state applies the solder paste ===========================================
                 // =======================================================================================================================
             case IRBStateMachine::ApplySolderPaste:
-
+                cout << "ApplySolderPaste State" << endl;
                 if (last_actuated_state_ == current_robot_state)
                 {
                     current_robot_state = IRBStateMachine::Move2DropSyringe;
@@ -443,20 +448,22 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::ApplySolderPaste);
+
+                current_robot_state = IRBStateMachine::Move2DropSyringe; // for testing, delete after
                 break;
 
                 // =======================================================================================================================
                 // ======================= This state moves the robot to the position of the syringe to drop it off ======================
                 // ======================================================================================================================= 
             case IRBStateMachine::Move2DropSyringe:
-		{
-                // Set the position of the Syringe
-                cout << "Move2DropSyringe State" << endl;
+                {
+                    // Set the position of the Syringe
+                    cout << "Move2DropSyringe State" << endl;
 
-                int n_via_point = 3;
+                    int n_via_point = 3;
                     double via_point[3][6] =
                     {
-                       {-3.12769, 0.02070, 2.16441, 0.0041, 0.2257, 0.4224},
+                        {-3.12769, 0.02070, 2.16441, 0.0041, 0.2257, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.3925}
                     };
@@ -466,13 +473,22 @@ int main(int argc, char **argv) {
                     while (via_p_cnt < n_via_point){
                         cout << "Move2DropSyringe State " << via_p_cnt << endl;
 
-                        desired_position(0) =  via_point[via_p_cnt][0]; //qw
-                        desired_position(1) =  via_point[via_p_cnt][1]; //qx
-                        desired_position(2) =  via_point[via_p_cnt][2]; //qy
-                        desired_position(3) =  via_point[via_p_cnt][3]; //qz
-                        desired_position(4) =  via_point[via_p_cnt][4]; //x
-                        desired_position(5) =  via_point[via_p_cnt][5]; //y
-                        desired_position(6) =  via_point[via_p_cnt][6]; //z
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
 
                         H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
 
@@ -483,7 +499,7 @@ int main(int argc, char **argv) {
                         ee_pose.data[4] = desired_position(4);
                         ee_pose.data[5] = desired_position(5);
                         ee_pose.data[6] = desired_position(6);
-                        ee_pose.data[7] = 0;
+
 
                         ee_position_pub.publish(ee_pose);
 
@@ -500,25 +516,26 @@ int main(int argc, char **argv) {
                                 (abs(ee_error(2)) < ERROR_THRESHOLD)) {
                             cout << "threshold met" << endl;
                             via_p_cnt++;
-                            current_robot_state = IRBStateMachine::ApplySolderPaste;
+                            current_robot_state = IRBStateMachine::DropSyringe;
                         }
 
 
                         // Publish the robot current state
-                        publish_state(robot_state_pub, IRBStateMachine::DropSyringe);
+                        publish_state(robot_state_pub, IRBStateMachine::Move2DropSyringe);
                         ros::spinOnce();
                     }
 
 
                     // Publish the robot current state
                     publish_state(robot_state_pub, IRBStateMachine::Move2DropSyringe);
-		}
+                }
                 break;
 
                 // =======================================================================================================================
                 // ============================================ This state drops the syringe =========== =================================
                 // =======================================================================================================================
             case IRBStateMachine::DropSyringe:
+                cout << "DropSyringe" << endl;
                 if (last_actuated_state_ == current_robot_state)
                 {
                     current_robot_state = IRBStateMachine::Move2PickSuction;
@@ -530,7 +547,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::DropSyringe);
-
+                current_robot_state = IRBStateMachine::Move2PickSuction; // for testing
                 break;
 
 
@@ -538,27 +555,75 @@ int main(int argc, char **argv) {
                 // ===================== This state moves the robot to the position of the suction cup to pick it up =====================
                 // ======================================================================================================================= 
             case IRBStateMachine::Move2PickSuction:
+                {
+                    // Set the position of the Suction cup to pick it up
+                    cout << "Move2PickSuction State" << endl;
 
-                // Set the position of the Suction cup to pick it up
-                cout << "Move2PickSuction State" << endl;
+                    int n_via_point = 3;
+                    double via_point[3][6] =
+                    {   
+                        {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.4224},
+                        {-3.12769, 0.02070, 2.16441, 0.1474, 0.3887, 0.4224},
+                        {-3.12769, 0.02070, 2.16441, 0.1474, 0.3887, 0.3925}
+                    };
 
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
-                desired_position(4) =     -0.174; //x
-                desired_position(5) =      0.415; //y
-                desired_position(6) =      0.145; //z
+                    int via_p_cnt = 0;
 
-                if ((abs(ee_error(0) < 5)) &&
-                        (abs(ee_error(1) < 5)) &&
-                        (abs(ee_error(2) < 5))) {
-                    cout << "threshold met" << endl;
-                    current_robot_state = IRBStateMachine::PickSuction;
+                    while (via_p_cnt < n_via_point){
+                        cout << "Move2PickSuction State " << via_p_cnt << endl;
+
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
+
+                        ee_position_pub.publish(ee_pose);
+
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            cout << "threshold met" << endl;
+                            via_p_cnt++;
+                            current_robot_state = IRBStateMachine::PickSuction;
+                        }
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::Move2PickSuction);
+                        ros::spinOnce();
+                    }
+
+
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::Move2PickSuction);
                 }
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::Move2PickSuction);
-
 
                 break;
 
@@ -567,6 +632,7 @@ int main(int argc, char **argv) {
                 // ========================================= This state picks up the suction cup =========================================
                 // =======================================================================================================================
             case IRBStateMachine::PickSuction:
+                cout << "PickSuction State" << endl;
                 if (last_actuated_state_ == current_robot_state)
                 {
                     current_robot_state = IRBStateMachine::Move2PickSOIC;
@@ -578,34 +644,82 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PickSuction);
+                current_robot_state = IRBStateMachine::Move2PickSOIC; // for testing
                 break;
 
                 // =======================================================================================================================
                 // ======================== This state moves the robot to the position of the SOIC to pick it up =========================
                 // ======================================================================================================================= 
             case IRBStateMachine::Move2PickSOIC:
-                // Set the position of the SOIC to pick it up
-                // This position is the one obtained from the CV node
-                cout << "Move2PickSOIC State" << endl;
+                {                
+                    // Set the position of the SOIC to pick it up
+                    // This position is the one obtained from the CV node
+                    cout << "Move2PickSOIC State" << endl;
 
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
-                desired_position(4) =     -0.174; //x
-                desired_position(5) =      0.415; //y
-                desired_position(6) =      0.145; //z
+                    int n_via_point = 3;
+                    double via_point[3][6] =
+                    {
+                        {-3.12769, 0.02070, 2.16441, 0.1474, 0.3887, 0.4224},
+                        {-3.12658, 0.02130, 2.16352, -0.0029, 0.3075, 0.5182},
+                        {-3.12658, 0.02130,  2.16352, -0.0029, 0.3075, 0.1915}
+                    };
 
-                if ((abs(ee_error(0) < 5)) &&
-                        (abs(ee_error(1) < 5)) &&
-                        (abs(ee_error(2) < 5))) {
-                    cout << "threshold met" << endl;
-                    current_robot_state = IRBStateMachine::PickSOIC;
+                    int via_p_cnt = 0;
+
+                    while (via_p_cnt < n_via_point){
+                        cout << "Move2PickSOIC State " << via_p_cnt << endl;
+
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
+
+                        ee_position_pub.publish(ee_pose);
+
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            cout << "threshold met" << endl;
+                            via_p_cnt++;
+                            current_robot_state = IRBStateMachine::PickSOIC;
+                        }
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::Move2PickSOIC);
+                        ros::spinOnce();
+                    }
+
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::Move2PickSOIC);
                 }
-
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::Move2PickSOIC);
-
                 break;
 
                 // =======================================================================================================================
@@ -623,34 +737,82 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PickSOIC);
+                current_robot_state = IRBStateMachine::Move2PlaceSOIC;
                 break;
 
                 // =======================================================================================================================
                 // ====================== This state moves the robot to the position of the PCB to place the SOIC  =======================
                 // ======================================================================================================================= 
             case IRBStateMachine::Move2PlaceSOIC:
-                // Set the position of the PCB to place the SOIC
-                // This is the position obtained from the CV node
-                cout << "Move2PlaceSOIC State" << endl;
+                {
+                    // Set the position of the PCB to place the SOIC
+                    // This is the position obtained from the CV node
+                    cout << "Move2PlaceSOIC State" << endl;
 
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
-                desired_position(4) =     -0.174; //x
-                desired_position(5) =      0.415; //y
-                desired_position(6) =      0.145; //z
+                    int n_via_point = 2;
+                    double via_point[3][6] =
+                    {
+                        {-3.12658, 0.02133, 2.16359, -0.2431, 0.2873, 0.3758},
+                        {-3.12658, 0.02133, 2.16359, -0.2431, 0.2873, 0.2078}                    
+                    };
 
-                if ((abs(ee_error(0) < 5)) &&
-                        (abs(ee_error(1) < 5)) &&
-                        (abs(ee_error(2) < 5))) {
-                    cout << "threshold met" << endl;
-                    current_robot_state = IRBStateMachine::PlaceSOIC;
-                }                
+                    int via_p_cnt = 0;
 
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::Move2PlaceSOIC);
+                    while (via_p_cnt < n_via_point){
+                        cout << "Move2PlaceSOIC State " << via_p_cnt << endl;
 
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
+
+                        ee_position_pub.publish(ee_pose);
+
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            cout << "threshold met" << endl;
+                            via_p_cnt++;
+                            current_robot_state = IRBStateMachine::PlaceSOIC;
+                        }
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::Move2PlaceSOIC);
+                        ros::spinOnce();
+                    }
+
+
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::Move2PlaceSOIC);
+                }
                 break;
 
                 // =======================================================================================================================
@@ -668,33 +830,80 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PlaceSOIC);
+                current_robot_state = IRBStateMachine::Move2DropSuction;
                 break;
 
                 // =======================================================================================================================
                 // ====================== This state moves the robot to the position of the suction to drop it off  ======================
                 // ======================================================================================================================= 
             case IRBStateMachine::Move2DropSuction:
-                // Set the position of the Suction cup to release
-                cout << "Move2DropSuction State" << endl;
+                { 
+                    // Set the position of the Suction cup to release
+                    cout << "Move2DropSuction State" << endl;
 
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
-                desired_position(4) =     -0.174; //x
-                desired_position(5) =      0.415; //y
-                desired_position(6) =      0.145; //z
+                    int n_via_point = 3;
+                    double via_point[3][6] =
+                    {
+                        {-3.12658, 0.02130, 2.16352, -0.0029, 0.3075, 0.5182},
+                        {-3.12769, 0.02070, 2.16441, 0.1474, 0.3887, 0.4224},
+                        {-3.12769, 0.02070, 2.16441, 0.1474, 0.3887, 0.3925}
+                    };
 
-                if ((abs(ee_error(0) < 5)) &&
-                        (abs(ee_error(1) < 5)) &&
-                        (abs(ee_error(2) < 5))) {
-                    cout << "threshold met" << endl;
-                    current_robot_state = IRBStateMachine::DropSuction;
-                }
+                    int via_p_cnt = 0;
+
+                    while (via_p_cnt < n_via_point){
+                        cout << "Move2DropSuction State " << via_p_cnt << endl;
+
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
 
 
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::Move2DropSuction);
+                        ee_position_pub.publish(ee_pose);
+
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            cout << "threshold met" << endl;
+                            via_p_cnt++;
+                            current_robot_state = IRBStateMachine::DropSuction;
+                        }
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::Move2DropSuction);
+                        ros::spinOnce();
+                    }
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::Move2DropSuction);
+                }                
                 break;
 
                 // =======================================================================================================================
@@ -712,38 +921,87 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::DropSuction);
+                current_robot_state = IRBStateMachine::Move2PickHotAirPencil; //
                 break;
 
                 // =======================================================================================================================
                 // ==================== This state moves the robot to the position of the hot air pencil to pick it up ===================
                 // ======================================================================================================================= 
             case IRBStateMachine::Move2PickHotAirPencil:
-                // Set the position of the Hot Air Pencil
-                cout << "Move2PickHotAirPencil State" << endl;
+                {
+                    // Set the position of the Hot Air Pencil
+                    cout << "Move2PickHotAirPencil State" << endl;
+                    int n_via_point = 3;
+                    double via_point[3][6] =
+                    {
+                        {-3.12769, 0.02070, 2.16441, 0.1474, 0.3887, 0.4224},
+                        {-3.12769, 0.02070, 2.16441, -0.0025, 0.4900, 0.4203},
+                        {-3.12769, 0.02070, 2.16441, -0.0025, 0.4900, 0.3925}
+                    };
 
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
-                desired_position(4) =     -0.174; //x
-                desired_position(5) =      0.415; //y
-                desired_position(6) =      0.145; //z
+                    int via_p_cnt = 0;
 
-                if ((abs(ee_error(0) < 5)) &&
-                        (abs(ee_error(1) < 5)) &&
-                        (abs(ee_error(2) < 5))) {
-                    cout << "threshold met" << endl;
-                    current_robot_state = IRBStateMachine::PickHotAirPencil;
-                }
+                    while (via_p_cnt < n_via_point){
+                        cout << "Move2PickHotAirPencil State " << via_p_cnt << endl;
 
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::Move2PickHotAirPencil);
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
+
+
+                        ee_position_pub.publish(ee_pose);
+
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            cout << "threshold met" << endl;
+                            via_p_cnt++;
+                            current_robot_state = IRBStateMachine::PickHotAirPencil;
+                        }
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::Move2PickHotAirPencil);
+                        ros::spinOnce();
+                    }
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::Move2PickHotAirPencil);
+                }                
                 break;
 
                 // =======================================================================================================================
                 // ======================================= This state picks up the hot air pencil ========================================
                 // =======================================================================================================================
             case IRBStateMachine::PickHotAirPencil:
+
+                cout << "PickHotAirPencil" << endl;
                 if (last_actuated_state_ == current_robot_state)
                 {
                     current_robot_state = IRBStateMachine::Move2SolderPCB;
@@ -755,33 +1013,81 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PickHotAirPencil);
+                current_robot_state = IRBStateMachine::Move2SolderPCB; //
                 break;
 
                 // =======================================================================================================================
                 // ===================== This state moves the robot to the position of the PCB to perform soldering ======================
                 // ======================================================================================================================= 
             case IRBStateMachine::Move2SolderPCB:
+                {
+                    // Set the position of the PCB toapply hot air
+                    cout << "Move2SolderPCB State" << endl;
+                    int n_via_point = 3;
+                    double via_point[3][6] =
+                    {
+                        {-3.12769, 0.02070, 2.16441, -0.0025, 0.4900, 0.4203},
+                        {-3.12769, 0.02070, 2.16441, -0.0844, 0.3590, 0.5018},
+                        {-3.12769, 0.02070, 2.16441, -0.2425, 0.2598, 0.3932},
+                    };
 
-                // Set the position of the PCB toapply hot air
-                cout << "Move2SolderPCB State" << endl;
+                    int via_p_cnt = 0;
 
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
-                desired_position(4) =     -0.174; //x
-                desired_position(5) =      0.415; //y
-                desired_position(6) =      0.145; //z
+                    while (via_p_cnt < n_via_point){
+                        cout << "Move2SolderPCB State " << via_p_cnt << endl;
 
-                if ((abs(ee_error(0) < 5)) &&
-                        (abs(ee_error(1) < 5)) &&
-                        (abs(ee_error(2) < 5))) {
-                    cout << "threshold met" << endl;
-                    current_robot_state = IRBStateMachine::ApplyHotAir;
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
+
+
+                        ee_position_pub.publish(ee_pose);
+
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            cout << "threshold met" << endl;
+                            via_p_cnt++;
+                            current_robot_state = IRBStateMachine::ApplyHotAir;
+                        }
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::Move2SolderPCB);
+                        ros::spinOnce();
+                    }
+
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::Move2SolderPCB);
                 }
-
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::Move2SolderPCB);
                 break;
 
                 // =======================================================================================================================
@@ -799,32 +1105,83 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::ApplyHotAir);
+                current_robot_state = IRBStateMachine::Move2DropHotAirPencil;
                 break;
 
                 // =======================================================================================================================
                 // =================== This state moves the robot to the position of the hot air pencil to drop it off ===================
                 // ======================================================================================================================= 
             case IRBStateMachine::Move2DropHotAirPencil:
-                // Set the position of the Hot Air Pencil
-                cout << "Move2DropHotAirPencil State" << endl;
+                {
+                    // Set the position of the Hot Air Pencil
+                    cout << "Move2DropHotAirPencil State" << endl;
 
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
-                desired_position(4) =     -0.174; //x
-                desired_position(5) =      0.415; //y
-                desired_position(6) =      0.145; //z
+                    int n_via_point = 3;
+                    double via_point[3][6] =
+                    {
+                        {-3.12769, 0.02070, 2.16441, -0.0844, 0.3590, 0.5018}, 
+                        {-3.12769, 0.02070, 2.16441, -0.0025, 0.4900, 0.4203},
+                        {-3.12769, 0.02070, 2.16441, -0.0025, 0.4900, 0.3925}
+                    };
 
-                if ((abs(ee_error(0) < 5)) &&
-                        (abs(ee_error(1) < 5)) &&
-                        (abs(ee_error(2) < 5))) {
-                    cout << "threshold met" << endl;
-                    current_robot_state = IRBStateMachine::DropHotAirPencil;
-                }
+                    int via_p_cnt = 0;
 
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::Move2DropHotAirPencil);
+                    while (via_p_cnt < n_via_point){
+                        cout << "Move2DropHotAirPencil State " << via_p_cnt << endl;
+
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
+
+
+                        ee_position_pub.publish(ee_pose);
+
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            cout << "threshold met" << endl;
+                            via_p_cnt++;
+                            current_robot_state = IRBStateMachine::DropHotAirPencil;
+                        }
+
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::Move2DropHotAirPencil);
+                        ros::spinOnce();
+                    }
+
+
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::Move2DropHotAirPencil);
+                } 
                 break;
 
                 // =======================================================================================================================
@@ -842,34 +1199,82 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::DropHotAirPencil);
-
+                current_robot_state = IRBStateMachine::ReturnHome;
                 break;
 
                 // =======================================================================================================================
                 // ======================= This state moves the robot to home position and terminates the program ========================
                 // ======================================================================================================================= 
             case IRBStateMachine::ReturnHome:
-                // Set the home position
-                cout << "ReturnHome State" << endl;
+                {
+                    // Set the home position
+                    cout << "ReturnHome State" << endl;
 
-                desired_position(0) =  sqrt(2)/2; //qw
-                desired_position(1) =          0; //qx
-                desired_position(2) =  sqrt(2)/2; //qy
-                desired_position(3) =          0; //qz
-                desired_position(4) =     -0.174; //x
-                desired_position(5) =      0.415; //y
-                desired_position(6) =      0.145; //z
+                    int n_via_point = 2;
+                    double via_point[3][6] =
+                    {
+                        {-3.12769, 0.02070, 2.16441, -0.0025, 0.4900, 0.4203},
+                        {-3.12769, 0.02070, 2.16441, 0.0041, 0.1257, 0.4224}
+                    };
 
-                if ((abs(ee_error(0) < 5)) &&
-                        (abs(ee_error(1) < 5)) &&
-                        (abs(ee_error(2) < 5))) {
-                    cout << "Succesfully Executed" << endl;
-                    exit(EXIT_SUCCESS);
+                    int via_p_cnt = 0;
+
+                    while (via_p_cnt < n_via_point){
+                        cout << "ReturnHome State " << via_p_cnt << endl;
+
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
+
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
+
+
+                        ee_position_pub.publish(ee_pose);
+
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            cout << "threshold met" << endl;
+                            via_p_cnt++;
+                            exit(EXIT_SUCCESS);
+                            //current_robot_state = IRBStateMachine::DropHotAirPencil;
+                        }
+
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::ReturnHome);
+                        ros::spinOnce();
+                    }
+
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::ReturnHome);
                 }
-
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::ReturnHome);
-
                 break;
 
 
