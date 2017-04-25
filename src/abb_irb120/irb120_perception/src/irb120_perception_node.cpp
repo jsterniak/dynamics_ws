@@ -32,7 +32,9 @@ void BGAPlacement::detectBGACallBack(const sensor_msgs::ImageConstPtr& img)
 	int horInPix=px;
 	float pixPerUnit = px*.5/(heightCam*tan(hor_fov*.5));// calculated = 120.627
 	cv::cvtColor(bgaOriginal, Bga_Chip_gray, CV_BGR2GRAY);
-	cv::threshold(Bga_Chip_gray,Bga_Chip_thresh, 140.0, 255.0, cv::THRESH_BINARY);
+//	cv::threshold(Bga_Chip_gray,Bga_Chip_thresh, 140.0, 255.0, cv::THRESH_BINARY);	// PCB detection
+	cv::threshold(Bga_Chip_gray,Bga_Chip_thresh, 45.0, 255.0, cv::THRESH_BINARY_INV);	// Chip detection
+
 
 // ----------------------------------------------------------------------------------------------------------
 	// Draw the min block.
@@ -61,8 +63,11 @@ void BGAPlacement::detectBGACallBack(const sensor_msgs::ImageConstPtr& img)
 
 	cv::vector<cv::vector<cv::Point> > contours;
 	cv:: bilateralFilter(Bga_Chip_thresh,imageFilter,9,75,75);
+	cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));  
+    cv::Mat imageFilter2;
+    cv::erode(imageFilter,imageFilter2, element);
 	cv::vector<cv::Vec4i> hierarchy	;
-	cv::Mat imageCopy = imageFilter.clone();
+	cv::Mat imageCopy = imageFilter2.clone();
 
 	cv::findContours(imageCopy,contours,hierarchy, cv::RETR_CCOMP ,cv::CHAIN_APPROX_NONE,cv::Point(0,0));
 	cv::vector<cv::vector <cv::Point> > contours_poly(contours.size());
@@ -82,7 +87,11 @@ void BGAPlacement::detectBGACallBack(const sensor_msgs::ImageConstPtr& img)
 	{
 		double area =cv::contourArea(contours[i], true);
 		cv::Moments moment = cv::moments((cv::Mat)contours[i]);
-		if (std::abs(area)>59000 & std::abs(area)<63000)	// The robot's tip position: 148.9mm
+
+		cout << i << ": " << "Area: " << abs(area) << endl;	
+
+		if (std::abs(area)>59000 & std::abs(area)<70000)	// The robot's tip position: 148.9mm, PCB detection
+//		if (std::abs(area)>37000 & std::abs(area)<42000)	// The robot's tip position: 130.0mm, chip detection
 		{
 
 			// Check the area.
@@ -92,7 +101,7 @@ void BGAPlacement::detectBGACallBack(const sensor_msgs::ImageConstPtr& img)
 			float w = boundRect[i].width, h = boundRect[i].height;
 
 			// Check the ratio.
-//			cout << i << ": " << "Ratio: " << w/h << " " << h/w  << endl;
+			cout << i << ": " << "Ratio: " << w/h << " " << h/w  << endl;
 
 			if ( w/h>0.4 && w/h < 2.2)
 			{
@@ -154,8 +163,8 @@ void BGAPlacement::detectBGACallBack(const sensor_msgs::ImageConstPtr& img)
 		}
 	}
 	//cout<<flag<<endl;
-//	cv::imshow("contours", Bga_Chip_thresh);
-	cv::imshow("contours", bgaOriginal);
+//	cv::imshow("contours", bgaOriginal);
+	cv::imshow("contours", imageFilter2);
 	cv::waitKey(1);
 }
 int main(int argc, char**argv)
