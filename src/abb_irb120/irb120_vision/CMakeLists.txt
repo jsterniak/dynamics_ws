@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   roscpp
   sensor_msgs
+  image_transport
 )
 
 find_package(OpenCV 2.4 REQUIRED core gpu imgproc calib3d highgui)
@@ -26,7 +27,7 @@ find_package(OpenCV 2.4 REQUIRED core gpu imgproc calib3d highgui)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES irb120_vision
-  CATKIN_DEPENDS cv_bridge roscpp sensor_msgs
+  CATKIN_DEPENDS cv_bridge roscpp sensor_msgs image_transport
 #  DEPENDS system_lib
 )
 
@@ -57,4 +58,6 @@ set (SOURCE_FILES
 
 add_library(${PROJECT_NAME}_lib ${SOURCE_FILES_LIB})
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
-target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_lib ${catkin_LIBRARIES})
+add_executable(irb120_vision_test src/irb120_vision_test.cpp)
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_lib ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(irb120_vision_test ${catkin_LIBRARIES})

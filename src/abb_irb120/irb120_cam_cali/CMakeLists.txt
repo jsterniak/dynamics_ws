@@ -10,13 +10,14 @@ project(irb120_cam_cali)
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   message_generation
-  OpenCV
   sensor_msgs
   std_msgs
   tf
   roslib
   image_transport
 )
+
+find_package(OpenCV 2.4 REQUIRED core gpu imgproc calib3d highgui)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
