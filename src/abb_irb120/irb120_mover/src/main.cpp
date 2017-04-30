@@ -50,7 +50,7 @@ int main(int argc, char **argv)
   success = group.plan(my_plan);
 
   // Uncomment below line when working with a real robot
-//  group.move();
+  group.move();
 
   ROS_INFO("Visualizing plan 2 (pose goal) %s",success?"":"FAILED");
   // Sleep to give Rviz time to visualize the plan

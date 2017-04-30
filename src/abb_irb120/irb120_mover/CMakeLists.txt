@@ -5,9 +5,13 @@ project(irb120_mover)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
+  std_msgs
   roscpp
   moveit_ros_planning_interface
 )
+find_package(cmake_modules REQUIRED)
+find_package(Eigen REQUIRED)
 
 ###################################
 ## catkin specific configuration ##
@@ -21,7 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES irb120_mover
-  CATKIN_DEPENDS roscpp moveit_ros_planning_interface
+  CATKIN_DEPENDS roscpp geometry_msgs std_msgs moveit_ros_planning_interface
 #  DEPENDS system_lib
 )
 
@@ -47,12 +51,29 @@ include_directories(
 
 ## Declare a C++ executable
  add_executable(irb120_mover_node src/main.cpp)
-
+ add_executable(irb120_main_loop src/state_machine.cpp)
+ add_executable(irb120_move_robot src/MoveRobot.cpp)
+ add_executable(irb120_robot_mover src/robot_mover.cpp)
 ## Specify libraries to link a library or executable target against
+add_library(irb120_move_robot_lib src/MoveRobot.cpp)
+
+target_link_libraries(irb120_main_loop irb120_move_robot_lib)
+
  target_link_libraries(irb120_mover_node
    ${catkin_LIBRARIES}
 )
 
+ target_link_libraries(irb120_main_loop
+   ${catkin_LIBRARIES}
+ )
+
+ target_link_libraries(irb120_robot_mover
+   ${catkin_LIBRARIES}
+ )
+
+ target_link_libraries(irb120_move_robot
+   ${catkin_LIBRARIES}
+ )
 #############
 ## Install ##
 #############

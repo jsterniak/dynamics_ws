@@ -3,7 +3,7 @@
 #include <iostream>
 #include <math.h>
 #include <iomanip>
-#include <Eigen/Dense>
+#include <eigen/Eigen/Dense>
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Point.h>
 #include <std_srvs/Empty.h>
