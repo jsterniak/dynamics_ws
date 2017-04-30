@@ -1,0 +1,2 @@
+Command used for test:
+g++ -o video_undistorted video_undistorted.cpp `pkg-config opencv --cflags --libs`
