@@ -111,48 +111,78 @@ int main(int argc, char **argv) {
             // This state initilizes the robot position above the PCB, a hardcoded position where the camera can easily detect the PCB
             // ======================================================================================================================= 
             case IRBStateMachine::Initialization:
-                cout << "Initialization State" << endl;
-                // Set the position of the PCB
-                desired_position(0) =   sqrt(2)/2; //qw
-                desired_position(1) =           0; //qx
-                desired_position(2) =   sqrt(2)/2; //qy
-                desired_position(3) =           0; //qz
-                desired_position(4) =     -0.2735; //x
-                desired_position(5) =      0.3704; //y
-                desired_position(6) =      0.1600; //z
+                {
+                    cout << "Initialization State" << endl;
 
-                H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
-                //cout << H << endl;
-                //cout << "======" << endl;
-                ee_pose.data[0] = desired_position(0);
-                ee_pose.data[1] = desired_position(1);
-                ee_pose.data[2] = desired_position(2);
-                ee_pose.data[3] = desired_position(3);
-                ee_pose.data[4] = desired_position(4);
-                ee_pose.data[5] = desired_position(5);
-                ee_pose.data[6] = desired_position(6);
+                    int n_via_point = 1;
+                    double via_point[][6] =
+                    {
+                        {-M_PI, 0, -2.35874, -0.2585, 0.3431, 0.1489},
+                      //  {-M_PI, 0, -2.35874, -0.2498, 0.3130, 0.1489}
+                    };
+
+                    int via_p_cnt = 0;
+
+                    while (via_p_cnt < n_via_point){
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        // Set the position of the PCB
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //x //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //x; //z
 
 
-                ee_position_pub.publish(ee_pose);
+                        H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
+                        //cout << H << endl;
+                        //cout << "======" << endl;
+                        ee_pose.data[0] = desired_position(0);
+                        ee_pose.data[1] = desired_position(1);
+                        ee_pose.data[2] = desired_position(2);
+                        ee_pose.data[3] = desired_position(3);
+                        ee_pose.data[4] = desired_position(4);
+                        ee_pose.data[5] = desired_position(5);
+                        ee_pose.data[6] = desired_position(6);
 
-                real_position(0) = H(0, 3);
-                real_position(1) = H(1, 3);
-                real_position(2) = H(2, 3);
 
-                ee_error(0) = real_position(0) - 1000 * desired_position(4);
-                ee_error(1) = real_position(1) - 1000 * desired_position(5);
-                ee_error(2) = real_position(2) - 1000 * desired_position(6);
+                        ee_position_pub.publish(ee_pose);
 
-                if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
-                        (abs(ee_error(1)) < ERROR_THRESHOLD) &&
-                        (abs(ee_error(2)) < ERROR_THRESHOLD)) {
-                    cout << "threshold met" << endl;
-                    current_robot_state = IRBStateMachine::DetectPCB;
+                        real_position(0) = H(0, 3);
+                        real_position(1) = H(1, 3);
+                        real_position(2) = H(2, 3);
+
+                        ee_error(0) = real_position(0) - 1000 * desired_position(4);
+                        ee_error(1) = real_position(1) - 1000 * desired_position(5);
+                        ee_error(2) = real_position(2) - 1000 * desired_position(6);
+
+                        if ((abs(ee_error(0)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(1)) < ERROR_THRESHOLD) &&
+                                (abs(ee_error(2)) < ERROR_THRESHOLD)) {
+                            via_p_cnt++;
+                            cout << "threshold met" << endl;
+                            current_robot_state = IRBStateMachine::DetectPCB;
+                            //cout << "debug" << endl;
+                        }
+
+                        // Publish the robot current state
+                        publish_state(robot_state_pub, IRBStateMachine::Initialization);
+                        ros::spinOnce();
+                    }
+
+
+                    // Publish the robot current state
+                    publish_state(robot_state_pub, IRBStateMachine::Initialization);
+                exit(EXIT_SUCCESS);
                 }
-
-                // Publish the robot current state
-                publish_state(robot_state_pub, IRBStateMachine::Initialization);
-
                 break;
 
 
@@ -173,7 +203,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::DetectPCB);
-                ;
+                
                 break;
 
                 // =======================================================================================================================
@@ -183,10 +213,10 @@ int main(int argc, char **argv) {
                 {
                     cout << "Move2DetectSOIC State" << endl;
                     int n_via_point = 2;
-                    double via_point[2][7] =
+                    double via_point[][6] =
                     {
-                        {sqrt(2)/2, 0, sqrt(2)/2, 0, -0.1112, 0.2266, 0.188},
-                        {sqrt(2)/2, 0, sqrt(2)/2, 0, -0.0383, 0.3463, 0.140}
+                        {-M_PI, 0, -2.35874, -0.1112, 0.2266, 0.188},
+                        {-M_PI, 0, -2.35874, -0.1011, 0.2929, 0.1350}
                     };
 
                     int via_p_cnt = 0;
@@ -194,13 +224,21 @@ int main(int argc, char **argv) {
                     while (via_p_cnt < n_via_point){
                         cout << "Move2DetectSOIC State " << via_p_cnt << endl;
 
-                        desired_position(0) =  via_point[via_p_cnt][0]; //qw
-                        desired_position(1) =  via_point[via_p_cnt][1]; //qx
-                        desired_position(2) =  via_point[via_p_cnt][2]; //qy
-                        desired_position(3) =  via_point[via_p_cnt][3]; //qz
-                        desired_position(4) =  via_point[via_p_cnt][4]; //x
-                        desired_position(5) =  via_point[via_p_cnt][5]; //y
-                        desired_position(6) =  via_point[via_p_cnt][6]; //z
+                        tf::Quaternion desired_pose_raw;
+                        desired_pose_raw = tf::createQuaternionFromRPY(via_point[via_p_cnt][0], via_point[via_p_cnt][1], via_point[via_p_cnt][2]);
+                        tf::Quaternion robot_studio_to_ros;
+                        robot_studio_to_ros = tf::createQuaternionFromRPY(0.0, -M_PI/2, 0.0);
+
+                        tf::Quaternion desired_pose;
+                        desired_pose = desired_pose_raw * robot_studio_to_ros;
+
+                        desired_position(0) =  desired_pose.w(); //qw
+                        desired_position(1) =  desired_pose.x(); //qx
+                        desired_position(2) =  desired_pose.y(); //qy
+                        desired_position(3) =  desired_pose.z(); //qz
+                        desired_position(4) =  via_point[via_p_cnt][3]; //x
+                        desired_position(5) =  via_point[via_p_cnt][4]; //y
+                        desired_position(6) =  via_point[via_p_cnt][5]; //z
 
                         H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
 
@@ -366,7 +404,7 @@ int main(int argc, char **argv) {
                     {
                         {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.0430, 0.2466, 0.4237},
-                        {-3.12769, 0.02070, 2.16441, -0.1984, 0.2893, 0.2857}
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.3106, 0.2843}
                     };
 
                     int via_p_cnt = 0;
@@ -438,17 +476,19 @@ int main(int argc, char **argv) {
                 {
                     cout << "ApplySolderPasteFirstSide State" << endl;
 
-                    int n_via_point = 6;
+                    int n_via_point = 7;
 
                     // Side 1
                     double via_point[][6] =
                     {
-                    	{-3.12769, 0.02070, 2.16441, -0.1890, 0.2192, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1890, 0.2174, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1890, 0.2159, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1890, 0.2144, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1890, 0.2126, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1890, 0.2110, 0.2857}
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.3130, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.3116, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.3103, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.3091, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.3079, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.3065, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.3051, 0.2843}
+
                     };
 
                     int via_p_cnt = 0;
@@ -519,24 +559,24 @@ int main(int argc, char **argv) {
                      */
                     // Publish the robot current state
                     publish_state(robot_state_pub, IRBStateMachine::ApplySolderPasteFirstSide);
-                    
+
                     //current_robot_state = IRBStateMachine::Move2DropSyringe; // for testing, delete after
                 }
                 break;
 
-                case IRBStateMachine::ApplySolderPasteMoveSide:
+            case IRBStateMachine::ApplySolderPasteMoveSide:
                 {
                     cout << "ApplySolderPasteMoveSide State" << endl;
 
-                    int n_via_point = 3;
+                    int n_via_point = 2;
 
-                   
+
                     double via_point[][6] =
                     {
-                    	{-3.12769, 0.02070, 2.16441, -0.1890, 0.2000, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1700, 0.2000, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1823, 0.2192, 0.2857}
-                       
+                        {-3.12769, 0.02070, 2.16441, -0.1882, 0.2997, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3051, 0.2843}
+                    //    {-3.12769, 0.02070, 2.16441, -0.1823, 0.2192, 0.2857}
+
                     };
 
                     int via_p_cnt = 0;
@@ -607,25 +647,26 @@ int main(int argc, char **argv) {
                      */
                     // Publish the robot current state
                     publish_state(robot_state_pub, IRBStateMachine::ApplySolderPasteMoveSide);
-                
+
                     //current_robot_state = IRBStateMachine::Move2DropSyringe; // for testing, delete after
                 }
                 break;
 
-                case IRBStateMachine::ApplySolderPasteSecondSide:
+            case IRBStateMachine::ApplySolderPasteSecondSide:
                 {
                     cout << "ApplySolderPasteSecondSide State" << endl;
 
-                    int n_via_point = 5;
+                    int n_via_point = 6;
 
                     // Side 2
                     double via_point[][6] =
                     {
-                        {-3.12769, 0.02070, 2.16441, -0.1823, 0.2174, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1823, 0.2159, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1823, 0.2144, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1823, 0.2126, 0.2857},
-                        {-3.12769, 0.02070, 2.16441, -0.1823, 0.2110, 0.2857}
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3064, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3075, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3090, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3101, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3114, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3127, 0.2843}
                     };
 
                     int via_p_cnt = 0;
@@ -709,9 +750,11 @@ int main(int argc, char **argv) {
                     // Set the position of the Syringe
                     cout << "Move2DropSyringe State" << endl;
 
-                    int n_via_point = 3;
-                    double via_point[3][6] =
+                    int n_via_point = 5;
+                    double via_point[][6] =
                     {
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3216, 0.2843},
+                        {-3.12769, 0.02070, 2.16441, -0.1820, 0.3216, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.0041, 0.2257, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.4224},
                         {-3.12769, 0.02070, 2.16441, 0.2255, 0.3362, 0.3925}
@@ -893,7 +936,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PickSuction);
-                //current_robot_state = IRBStateMachine::Move2PickSOIC; // for testing
+                current_robot_state = IRBStateMachine::Move2PickSOIC; // for testing
                 break;
 
                 // =======================================================================================================================
@@ -906,11 +949,11 @@ int main(int argc, char **argv) {
                     cout << "Move2PickSOIC State" << endl;
 
                     int n_via_point = 3;
-                    double via_point[3][6] =
+                    double via_point[][6] =
                     {
                         {-3.12769, 0.02070, 2.16441, 0.1474, 0.3887, 0.4224},
-                        {-3.12658, 0.02130, 2.16352, -0.0029, 0.3075, 0.5182},
-                        {-3.12658, 0.02130,  2.16352, -0.0029, 0.3075, 0.1915}
+                        {-3.14149, 0, -2.55214,-0.0426, 0.2894, 0.4224},
+                        {-3.14149, 0, -2.55214, -0.0418, 0.2882, 0.1899}
                     };
 
                     int via_p_cnt = 0;
@@ -986,7 +1029,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PickSOIC);
-                //current_robot_state = IRBStateMachine::Move2PlaceSOIC;
+                current_robot_state = IRBStateMachine::Move2PlaceSOIC;
                 break;
 
                 // =======================================================================================================================
@@ -998,11 +1041,12 @@ int main(int argc, char **argv) {
                     // This is the position obtained from the CV node
                     cout << "Move2PlaceSOIC State" << endl;
 
-                    int n_via_point = 2;
-                    double via_point[3][6] =
+                    int n_via_point = 3;
+                    double via_point[][6] =
                     {
-                        {-3.12658, 0.02133, 2.16359, -0.2431, 0.2873, 0.3758},
-                        {-3.12658, 0.02133, 2.16359, -0.2431, 0.2873, 0.2078}                    
+                        {-3.13636, 0, -3.08749, -0.0418, 0.2882, 0.2237},
+                        {-3.13636, 0, -3.08749, -0.1890, 0.3115, 0.2265},
+                        {-3.13636, 0, -3.08749, -0.1890, 0.3115, 0.2065}                    
                     };
 
                     int via_p_cnt = 0;
@@ -1079,7 +1123,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PlaceSOIC);
-                //current_robot_state = IRBStateMachine::Move2DropSuction;
+                current_robot_state = IRBStateMachine::Move2DropSuction;
                 break;
 
                 // =======================================================================================================================
@@ -1091,7 +1135,7 @@ int main(int argc, char **argv) {
                     cout << "Move2DropSuction State" << endl;
 
                     int n_via_point = 3;
-                    double via_point[3][6] =
+                    double via_point[][6] =
                     {
                         {-3.12658, 0.02130, 2.16352, -0.0029, 0.3075, 0.5182},
                         {-3.12769, 0.02070, 2.16441, 0.1474, 0.3887, 0.4224},
@@ -1170,7 +1214,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::DropSuction);
-                //current_robot_state = IRBStateMachine::Move2PickHotAirPencil; //
+                current_robot_state = IRBStateMachine::Move2PickHotAirPencil; //
                 break;
 
                 // =======================================================================================================================
@@ -1262,7 +1306,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::PickHotAirPencil);
-                //current_robot_state = IRBStateMachine::Move2SolderPCB; //
+                current_robot_state = IRBStateMachine::Move2SolderPCB; //
                 break;
 
                 // =======================================================================================================================
@@ -1277,7 +1321,7 @@ int main(int argc, char **argv) {
                     {
                         {-3.12769, 0.02070, 2.16441, -0.0025, 0.4900, 0.4203},
                         {-3.12769, 0.02070, 2.16441, -0.0844, 0.3590, 0.5018},
-                        {-3.12769, 0.02070, 2.16441, -0.2425, 0.2598, 0.3932},
+                        {-3.12769, 0.02070, 2.16441, -0.1890, 0.3120, 0.3939},
                     };
 
                     int via_p_cnt = 0;
@@ -1345,7 +1389,7 @@ int main(int argc, char **argv) {
             case IRBStateMachine::ApplyHotAir:
                 if (last_actuated_state_ == current_robot_state)
                 {
-                    current_robot_state = IRBStateMachine::Move2ReleaseSolderPaste;
+                    current_robot_state = IRBStateMachine::Move2DropHotAirPencil;
                 }
                 else
                 {
@@ -1366,7 +1410,7 @@ int main(int argc, char **argv) {
                     cout << "Move2DropHotAirPencil State" << endl;
 
                     int n_via_point = 3;
-                    double via_point[3][6] =
+                    double via_point[][6] =
                     {
                         {-3.12769, 0.02070, 2.16441, -0.0844, 0.3590, 0.5018}, 
                         {-3.12769, 0.02070, 2.16441, -0.0025, 0.4900, 0.4203},
@@ -1448,7 +1492,7 @@ int main(int argc, char **argv) {
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::DropHotAirPencil);
-                //current_robot_state = IRBStateMachine::ReturnHome;
+                current_robot_state = IRBStateMachine::ReturnHome;
                 break;
 
                 // =======================================================================================================================
@@ -1512,7 +1556,7 @@ int main(int argc, char **argv) {
                                 (abs(ee_error(2)) < ERROR_THRESHOLD)) {
                             cout << "threshold met" << endl;
                             via_p_cnt++;
-                         
+
                             //current_robot_state = IRBStateMachine::DropHotAirPencil;
                         }
 

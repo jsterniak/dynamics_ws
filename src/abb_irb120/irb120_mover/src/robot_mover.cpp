@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 
             // Uncomment below line when working with a real robot
             group.move();
-            sleep(5.0);
+            sleep(2.0);
             //ROS_INFO("Going to arbitrary position in 2 seconds");
         }
 
