@@ -3,6 +3,8 @@
 #include <std_msgs/Int32.h>
 #include <geometry_msgs/Point.h>
 #include <sensor_msgs/JointState.h>
+#include <geometry_msgs/Pose2D.h>
+#include <tf/LinearMath/Quaternion.h>
 #include "MoveRobot.h"
 #include "state_machine.hpp"
 
@@ -39,6 +41,24 @@ void ActuationStateCB (const std_msgs::Int32ConstPtr& msg)
     last_actuated_state_ = static_cast<IRBStateMachine::RobotState>(msg->data);
 }
 
+geometry_msgs::Pose2D pcb_pose;
+bool pcb_pose_found;
+
+void PCBLocCB(const geometry_msgs::Pose2DConstPtr& msg)
+{
+    if(IRBStateMachine::DetectPCB == current_robot_state)
+    {
+      pcb_pose.x = msg->x;
+      pcb_pose.y = msg->y;
+      pcb_pose.theta = msg->theta;
+      pcb_pose_found = true;
+    }
+    else
+    {
+      // do nothing
+    }
+}
+
 void publish_state(const ros::Publisher& f_pub, const IRBStateMachine::RobotState f_state)
 {
     std_msgs::Int32 state_msg;
@@ -55,6 +75,8 @@ int main(int argc, char **argv) {
 
     ros::Subscriber ee_pos_sub  = n.subscribe("/joint_states", 100, EEPositionFeedBackCB);      // Subscriber to get the real robot JointAngles
     ros::Subscriber actuator_state_sub = n.subscribe("/irb120/actuation_state_complete", 100, ActuationStateCB);
+
+    ros::Subscriber pcb_register_sub = n.subscribe("/irb120/pcb_pose", 100, PCBLocCB);
 
     ros::Rate loop_rate(20); // Publishing at 50 ms = 20Hz
 
@@ -97,6 +119,27 @@ int main(int argc, char **argv) {
     current_robot_state = IRBStateMachine::Initialization;
     last_actuated_state_ = IRBStateMachine::Initialization;
 
+    pcb_pose.theta = 0.0;
+    pcb_pose.x = 0.0;
+    pcb_pose.y = 0.0;
+    pcb_pose_found = false;
+
+    double_t pcb_nom_qw =   sqrt(2)/2; //qw
+    double_t pcb_nom_qx =           0; //qx
+    double_t pcb_nom_qy =   sqrt(2)/2; //qy
+    double_t pcb_nom_qz =           0; //qz
+    double_t pcb_nom_x =      -0.2735; //x
+    double_t pcb_nom_y =       0.3704; //y
+    double_t pcb_nom_z =       0.1600; //z
+
+    double_t soic_nom_qw = sqrt(2)/2; //qw
+    double_t soic_nom_qx =         0; //qx
+    double_t soic_nom_qy = sqrt(2)/2; //qy
+    double_t soic_nom_qz =         0; //qz
+    double_t soic_nom_x  =   -0.1112; //x
+    double_t soic_nom_y  =    0.2266; //y
+    double_t soic_nom_z  =     0.188; //z
+
     std_msgs::Float64MultiArray ee_pose;
     ee_pose.data.resize(7);
     // Define vectors that represent the position of the PCB and error
@@ -113,13 +156,13 @@ int main(int argc, char **argv) {
             case IRBStateMachine::Initialization:
                 cout << "Initialization State" << endl;
                 // Set the position of the PCB
-                desired_position(0) =   sqrt(2)/2; //qw
-                desired_position(1) =           0; //qx
-                desired_position(2) =   sqrt(2)/2; //qy
-                desired_position(3) =           0; //qz
-                desired_position(4) =     -0.2735; //x
-                desired_position(5) =      0.3704; //y
-                desired_position(6) =      0.1600; //z
+                desired_position(0) =   pcb_nom_qw; //qw
+                desired_position(1) =   pcb_nom_qx; //qx
+                desired_position(2) =   pcb_nom_qy; //qy
+                desired_position(3) =   pcb_nom_qz; //qz
+                desired_position(4) =   pcb_nom_x; //x
+                desired_position(5) =   pcb_nom_y; //y
+                desired_position(6) =   pcb_nom_z; //z
 
                 H = move_bot.getHomogeneous(JointAngles, d, a, alpha);
                 //cout << H << endl;
@@ -161,19 +204,20 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case IRBStateMachine::DetectPCB:
 
-                // INSERT CODE FOR COMPUTER VISION
-                // USE tf.can_transform to trigger the next state
                 cout << "Detecting PCB" << endl;
 
-                for (int i = 0; i < 20; i++){
-                    cout << "Detecting PCB" << endl;
+                if (pcb_pose_found)
+                {
+                  current_robot_state = IRBStateMachine::Move2DetectSOIC;
                 }
-
-                current_robot_state = IRBStateMachine::Move2DetectSOIC;
+                else
+                {
+                  // do nothing
+                }
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::DetectPCB);
-                ;
+
                 break;
 
                 // =======================================================================================================================
@@ -182,10 +226,26 @@ int main(int argc, char **argv) {
             case IRBStateMachine::Move2DetectSOIC:
                 {
                     cout << "Move2DetectSOIC State" << endl;
-                    int n_via_point = 2;
+//                    int n_via_point = 2;
+                    int n_via_point = 1;
+
+                    const tf::Quaternion raw_soic_orient(soic_nom_qx, soic_nom_qy, soic_nom_qz, soic_nom_qw);
+                    const tf::Quaternion pcb_orient_offset = tf::createQuaternionFromYaw(pcb_pose.theta);
+                    const tf::Quaternion soic_spot_orient = raw_soic_orient * pcb_orient_offset;
+                    const double_t soic_spot_dx = soic_nom_x - pcb_nom_x;
+                    const double_t soic_spot_dy = soic_nom_y - pcb_nom_y;
+                    const double_t soic_spot_x = pcb_nom_x + pcb_pose.x
+                        + soic_spot_dx * cos(pcb_pose.theta)
+                        - soic_spot_dy * sin(pcb_pose.theta);
+                    const double_t soic_spot_y = pcb_nom_y + pcb_pose.y
+                        + soic_spot_dx * sin(pcb_pose.theta)
+                        + soic_spot_dy * cos(pcb_pose.theta);
+
                     double via_point[2][7] =
                     {
-                        {sqrt(2)/2, 0, sqrt(2)/2, 0, -0.1112, 0.2266, 0.188},
+                        {soic_spot_orient.w(), soic_spot_orient.x(),
+                         soic_spot_orient.y(), soic_spot_orient.z(),
+                         soic_spot_x, soic_spot_y, soic_nom_z},
                         {sqrt(2)/2, 0, sqrt(2)/2, 0, -0.0383, 0.3463, 0.140}
                     };
 
@@ -228,7 +288,8 @@ int main(int argc, char **argv) {
                                 (abs(ee_error(2)) < ERROR_THRESHOLD)) {
                             cout << "threshold met" << endl;
                             via_p_cnt++;
-                            current_robot_state = IRBStateMachine::DetectSOIC;
+//                            current_robot_state = IRBStateMachine::DetectSOIC;
+                            current_robot_state = IRBStateMachine::ReturnHome;
                         }
 
 

@@ -253,18 +253,6 @@ void CSARAVision::register_pcb(const fiducial_vec& img_fiducials, int32_t img_ro
                    img_rows, img_cols,
                    translation_x, translation_y);
 
-//  ROS_ERROR("img:");
-//  ROS_ERROR("%f, %f",img_pts[0].x, img_pts[0].y);
-//  ROS_ERROR("%f, %f",img_pts[1].x, img_pts[1].y);
-//  ROS_ERROR("%f, %f",img_pts[2].x, img_pts[2].y);
-//  ROS_ERROR("%f, %f",img_pts[3].x, img_pts[3].y);
-
-//  ROS_ERROR("model:");
-//  ROS_ERROR("%f, %f",model_pts[0].x, model_pts[0].y);
-//  ROS_ERROR("%f, %f",model_pts[1].x, model_pts[1].y);
-//  ROS_ERROR("%f, %f",model_pts[2].x, model_pts[2].y);
-//  ROS_ERROR("%f, %f",model_pts[3].x, model_pts[3].y);
-
   // publish pcb pose
   geometry_msgs::Pose2D pose_msg;
   pose_msg.x = translation_x;
