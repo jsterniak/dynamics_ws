@@ -4,37 +4,29 @@ WPI RBE-501 S17 Robot Dynamics Project:
 
 Team
 
-Ethan Barrieau
-
-Tri Khuu
-
-Nicholas Longworth
-
-Jeff Sterniak
-
-Zhenyu Wan
-
-Yicong Xu
+* Ethan Barrieau
+* Tri Khuu
+* Nicholas Longworth
+* Jeff Sterniak
+* Zhenyu Wan
+* Yicong Xu
 
 Project forked from RBE-501 F16 Automated BGA Placement project
 
 Thanks to
 
-Ankur Agrawal
-
-Janani Mohan
-
-Praneeta Mallela
-
-Sathya Narayanan
+* Ankur Agrawal
+* Janani Mohan
+* Praneeta Mallela
+* Sathya Narayanan
 
 Project Goal : Soldering with the ABB IRB 120 industrial Robot (SARA), specifically a fully automated SOIC component soldering system
 
 This repository contains the code needed to automatically operate SARA, including
 
-*Identification and registration of the PCB and SOIC14 chip
+* Identification and registration of the PCB and SOIC14 chip
 
-*Attachment and operation of custom end effectors
+* Attachment and operation of custom end effectors
 1. Solder paste application syringe
 2. IC suction cup
 3. Hot air pencil
@@ -55,21 +47,14 @@ irb120\_vision: Performs PCB location and registration
 
 To operate,
 
-roscore
-
-roslaunch abb\_irb120\_moveit\_config moveit\_planning\_execution.launch
-
-roslaunch irb120\_vision lifecam.launch
-
-rosrun irb120\_cam\_cali irb120\_cam\_cali\_node
-
-rosrun irb120\_perception irb120\_perception\_node
-
-rosrun irb120\_vision irb120\_vision
-
-rosrun irb120\_mover irb120\_main\_loop
-
-rosrun irb120\_mover irb120\_robot\_mover
+* roscore
+* roslaunch abb\_irb120\_moveit\_config moveit\_planning\_execution.launch
+* roslaunch irb120\_vision lifecam.launch
+* rosrun irb120\_cam\_cali irb120\_cam\_cali\_node
+* rosrun irb120\_perception irb120\_perception\_node
+* rosrun irb120\_vision irb120\_vision
+* rosrun irb120\_mover irb120\_main\_loop
+* rosrun irb120\_mover irb120\_robot\_mover
 
 Dependent Packages to be installed:
 
