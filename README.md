@@ -1,86 +1,80 @@
-# dynamics_ws
+# dynamics\_ws
 
-WPI RBE-500 Dynamics_Project_2016 :
+WPI RBE-501 S17 Robot Dynamics Project:
 
-Contributors
+Team
+
+Ethan Barrieau
+Tri Khuu
+Nicholas Longworth
+Jeff Sterniak
+Zhenyu Wan
+Yicong Xu
+
+Project forked from RBE-501 F16 Automated BGA Placement project
+
+Thanks to
 
 Ankur Agrawal
-
 Janani Mohan
-
 Praneeta Mallela
-
 Sathya Narayanan
 
-Project Goal : Accurate BGA chip placement on a PCB using ABB IRB 120 Industrial robot
+Project Goal : Soldering with the ABB IRB 120 industrial Robot (SARA), specifically a fully automated SOIC component soldering system
 
-This repository contains the necessary packages for simulating ABB IRB 120 for a pick and place application of BGA on a PCB. The simulation is carried out in Gazebo using ROS. A Vacuum gripper is attached to the end effector for pick and place operation. The uses of different packages are as follows: 
+This repository contains the code needed to automatically operate SARA, including
+*Identification and registration of the PCB and SOIC14 chip
+*Attachment and operation of custom end effectors
+1. Solder paste application syringe
+2. IC suction cup
+3. Hot air pencil
 
-irb120 : Trajectory Planning
+The packages are as follows: 
 
-irb120_perception : Image Processing for determination of the position and orientation of the BGA. 
+irb120\_mover: Master robot control
 
-irb120_tf_calc : Gives the Position of Camera_frame with respect to the World.
+irb120\_perception: Image Processing for determination of the position and orientation of the SOIC 
 
-Future Goal : To work on different sizes of BGAs and different orientations of BGAs.
+irb120\_tf\_calc: Produces the robot TF chain
+
+irb120\_actuator: Sends serial commands to an Arduino for relay actuation
+
+irb120\_cam\_cali: Provides a distortion corrected image from the webcam+loupe
+
+irb120\_vision: Performs PCB location and registration
+
+To operate,
+
+roscore
+roslaunch abb\_irb120\_moveit\_config moveit\_planning\_execution.launch
+roslaunch irb120\_vision lifecam.launch
+rosrun irb120\_cam\_cali irb120\_cam\_cali\_node
+rosrun irb120\_perception irb120\_perception\_node
+rosrun irb120\_vision irb120\_vision
+rosrun irb120\_mover irb120\_main\_loop
+rosrun irb120\_mover irb120\_robot\_mover
 
 Dependent Packages to be installed:
 
-ros-indigo : http://www.ros.org/
+ros-indigo: http://www.ros.org/
 
-gazebo2/ gazebo7 : http://gazebosim.org/
+gazebo2/ gazebo7: http://gazebosim.org/
 
-OpenCV : http://opencv.org/
+OpenCV: http://opencv.org/
 
-Eigen : http://eigen.tuxfamily.org/index.php?title=Main_Page
+Eigen: http://eigen.tuxfamily.org/index.php?title=Main\_Page
 
-ros-controllers : ``` sudo apt-get install ros-indigo-gazebo-ros-pkgs ros-indigo-gazebo-ros-control ```
+Serial: http://wjwwood.io/serial/  
+
+ros-controllers: sudo apt-get install ros-indigo-gazebo-ros-pkgs ros-indigo-gazebo-ros-control
  
-ros-gazebo-pkgs for vaccum gripper plugins : https://github.com/ros-simulation/gazebo_ros_pkgs
+ros-gazebo-pkgs for vaccum gripper plugins: https://github.com/ros-simulation/gazebo\_ros\_pkgs
 
 Clone this repository using: 
-
-``` 
-git clone https://github.com/sathya1995/dynamics_ws.git
-```
+git clone https://github.com/jsterniak/dynamics\_ws.git
 
 Build the Package using:
-
-```
-catkin_make
-```
+catkin\_make
 
 Source the package to ROS Path: 
-```
 source devel/setup.bash
-```
-
-Important Note:
-
-```
-Kindly copy the folder named irb120_model in irb120_gazebo/worlds and paste it in the location ~/.gazebo/models
-```
-
-The following steps are to be done in the order specified below: 
-
-Launch gazebo: 
-```
-roslaunch irb120-gazebo irb120_gazebo.launch
-```
-
-Run the Node for trajectory planning: 
-``` 
-rosrun irb120 irb120_node 
-```
-
-Run the tf node: 
-``` 
-rosrun irb120_tf_calc irb120_tf_calc_node 
-```
-
-Run the Node for image processing: 
-```
-rosrun irb120_perception irb120_perception_node 
-```
-
-The Robot should be moving to desired place for picking the BGA and then placing the BGA on the PCB at the desired orientation. 
