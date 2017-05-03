@@ -2,6 +2,7 @@
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Int32.h>
 #include <geometry_msgs/Point.h>
+#include <geometry_msgs/Pose2D.h>
 #include <sensor_msgs/JointState.h>
 #include "MoveRobot.h"
 #include "state_machine.hpp"
@@ -39,6 +40,24 @@ void ActuationStateCB (const std_msgs::Int32ConstPtr& msg)
     last_actuated_state_ = static_cast<IRBStateMachine::RobotState>(msg->data);
 }
 
+geometry_msgs::Pose2D pcb_pose;
+bool pcb_pose_found;
+
+void PCBLocCB(const geometry_msgs::Pose2DConstPtr& msg)
+{
+    if(IRBStateMachine::DetectPCB == current_robot_state)
+    {
+      pcb_pose.x = msg->x;
+      pcb_pose.y = msg->y;
+      pcb_pose.theta = msg->theta;
+      pcb_pose_found = true;
+    }
+    else
+    {
+      // do nothing
+    }
+}
+
 void publish_state(const ros::Publisher& f_pub, const IRBStateMachine::RobotState f_state)
 {
     std_msgs::Int32 state_msg;
@@ -55,6 +74,8 @@ int main(int argc, char **argv) {
 
     ros::Subscriber ee_pos_sub  = n.subscribe("/joint_states", 100, EEPositionFeedBackCB);      // Subscriber to get the real robot JointAngles
     ros::Subscriber actuator_state_sub = n.subscribe("/irb120/actuation_state_complete", 100, ActuationStateCB);
+
+    ros::Subscriber pcb_register_sub = n.subscribe("/irb120/pcb_pose", 100, PCBLocCB);
 
     ros::Rate loop_rate(20); // Publishing at 50 ms = 20Hz
 
@@ -96,6 +117,11 @@ int main(int argc, char **argv) {
     // initialize states
     current_robot_state = IRBStateMachine::Initialization;
     last_actuated_state_ = IRBStateMachine::Initialization;
+
+    pcb_pose.theta = 0.0;
+    pcb_pose.x = 0.0;
+    pcb_pose.y = 0.0;
+    pcb_pose_found = false;
 
     std_msgs::Float64MultiArray ee_pose;
     ee_pose.data.resize(7);
@@ -191,20 +217,22 @@ int main(int argc, char **argv) {
                 // ======================================================================================================================= 
             case IRBStateMachine::DetectPCB:
 
-                // INSERT CODE FOR COMPUTER VISION
-                // USE tf.can_transform to trigger the next state
                 cout << "Detecting PCB" << endl;
 
-                for (int i = 0; i < 20; i++){
-                    cout << "Detecting PCB" << endl;
+                if (pcb_pose_found)
+                {
+                  current_robot_state = IRBStateMachine::Move2DetectSOIC;
                 }
-
-                current_robot_state = IRBStateMachine::Move2DetectSOIC;
+                else
+                {
+                  // do nothing
+                }
 
                 // Publish the robot current state
                 publish_state(robot_state_pub, IRBStateMachine::DetectPCB);
-                
+
                 break;
+
 
                 // =======================================================================================================================
                 // === This state moves the robot to a position above the SOIC, within the camera view to determine the SOIC position ====
