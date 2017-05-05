@@ -48,9 +48,15 @@ void PCBLocCB(const geometry_msgs::Pose2DConstPtr& msg)
 {
     if(IRBStateMachine::DetectPCB == current_robot_state)
     {
-      pcb_pose.x = msg->x;
-      pcb_pose.y = msg->y;
-      pcb_pose.theta = msg->theta;
+      // there should be a TF call here, but as initial test, the PCB is oriented
+      // approximately -pi/2 rotation from the base CF orientation, therefore,
+      // transform the offsets manually
+      pcb_pose.x = msg->y;
+      pcb_pose.y = -msg->x;
+      // the center of rotation of the pcb detected is also not accounted for correctly
+      // currently so disregard theta until full TF chain is implemented
+      //pcb_pose.theta = msg->theta;
+      pcb_pose.theta = 0.0;
       pcb_pose_found = true;
     }
     else
