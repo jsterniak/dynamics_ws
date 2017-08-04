@@ -6,17 +6,20 @@
 #include <string.h>
 #include <std_msgs/Float64.h>
 #include <iostream>
-#define PI 3.14159265
-#define hor_fov 0.95// in radians(= 54.43 degrees)
-#define heightCam 30.0 //in mm
+
+static const double hor_fov = 0.95; // in radians(= 54.43 degrees)
+static const double heightCam = 30.0; //in mm
 
 using namespace std;
 
-BGAPlacement::BGAPlacement(ros::NodeHandle n){
+BGAPlacement::BGAPlacement(ros::NodeHandle& n)
+  : it_(n)
+{
 	m_orientationPub =  n.advertise<std_msgs:: Float64> ("/detect/bga/orientation",100);
 	m_xy_pickup_Pub = n.advertise<geometry_msgs:: Point> ("/detect/bga_pickup/xy",100);
 	m_xy_place_Pub = n.advertise<geometry_msgs:: Point> ("/detect/bga_place/xy",100);
 	m_imageSub = n.subscribe("/CalibratedVideo/image_fine", 10, &BGAPlacement::detectBGACallBack,this);
+  ic_outline_pub_ = it_.advertise("/CalibratedVideo/ic_outline_img", 1);
 }
 
 void BGAPlacement::detectBGACallBack(const sensor_msgs::ImageConstPtr& img)
@@ -164,9 +167,13 @@ void BGAPlacement::detectBGACallBack(const sensor_msgs::ImageConstPtr& img)
 	}
 	//cout<<flag<<endl;
 //	cv::imshow("contours", bgaOriginal);
-	cv::imshow("contours", imageFilter2);
-	cv::waitKey(1);
+//	cv::imshow("contours", imageFilter2);
+//	cv::waitKey(1);
+  // publish image
+  sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", imageFilter2).toImageMsg();
+  ic_outline_pub_.publish(msg);
 }
+
 int main(int argc, char**argv)
 {
 	ros::init(argc, argv, "irb120_perception_node");

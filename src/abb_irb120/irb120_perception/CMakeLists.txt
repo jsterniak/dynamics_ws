@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   tf
+  image_transport
 )
 find_package(OpenCV 2.4 REQUIRED core gpu imgproc calib3d highgui)
 ## System dependencies are found with CMake's conventions

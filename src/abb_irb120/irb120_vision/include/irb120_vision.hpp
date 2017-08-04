@@ -33,12 +33,6 @@ private:
   int8_t min_y_index(const point_vec& fiducials);
   double_t calc_dist(const cv::Point2d& pt1, const cv::Point2d& pt2);
 
-  template<typename T>
-  int32_t sgn(T val)
-  {
-    return (T(0) < val) - (val < T(0));
-  }
-
   ros::NodeHandle nh_;
   ros::Subscriber img_sub_;
   image_transport::Publisher pcb_feature_pub_;

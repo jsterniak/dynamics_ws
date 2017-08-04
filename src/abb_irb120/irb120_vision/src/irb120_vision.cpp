@@ -4,7 +4,6 @@
 #include <std_msgs/Int32.h>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
-#include <image_transport/image_transport.h>
 #include <math.h>
 #include <geometry_msgs/Pose2D.h>
 
@@ -153,10 +152,10 @@ double_t CSARAVision::calc_perim(const point_vec& pts)
 
 double_t CSARAVision::calc_dist(const cv::Point2d& pt1, const cv::Point2d& pt2)
 {
-  double_t dx = pt1.x - pt2.x;
-  double_t dy = pt1.y - pt2.y;
+  const double_t dx = pt1.x - pt2.x;
+  const double_t dy = pt1.y - pt2.y;
 
-  double_t dist_squared = dx*dx + dy*dy;
+  const double_t dist_squared = dx*dx + dy*dy;
 
   return sqrt(dist_squared);
 }
