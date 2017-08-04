@@ -47,14 +47,16 @@ irb120\_vision: Performs PCB location and registration
 
 To operate,
 
-* roscore
-* roslaunch abb\_irb120\_moveit\_config moveit\_planning\_execution.launch
-* roslaunch irb120\_vision lifecam.launch
-* rosrun irb120\_cam\_cali irb120\_cam\_cali\_node
-* rosrun irb120\_perception irb120\_perception\_node
-* rosrun irb120\_vision irb120\_vision
-* rosrun irb120\_mover irb120\_main\_loop
-* rosrun irb120\_mover irb120\_robot\_mover
+```
+roscore
+roslaunch abb_irb120_moveit_config moveit_planning_execution.launch
+roslaunch irb120_vision lifecam.launch
+rosrun irb120_cam_cali irb120_cam_cali_node
+rosrun irb120_perception irb120_perception_node
+rosrun irb120_vision irb120_vision
+rosrun irb120_mover irb120_main_loop
+rosrun irb120_mover irb120_robot_mover
+```
 
 Dependent Packages to be installed:
 
